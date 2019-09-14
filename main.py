@@ -31,6 +31,7 @@ class Program():
 		self.lines = self.splitLines(self.cleanText(self.readText(cfile)))
 		print(self.lines)
 		self.shortenTypes()
+<<<<<<< HEAD
 		self.structDict = self.getStructs()
 		self.typedefSearch()
 		for type in self.structDict.keys():
@@ -41,6 +42,13 @@ class Program():
 		self.loopPositions = self.getLoops() # key: line number of start of loop, value: line number of end of loop
 		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains for loops we are currently inside
+=======
+		self.funcDict = self.getFunctions()
+		self.loopPositions = self.getLoopPositions() # key: line number of start of loop, value: line number of end of loop
+		self.loopPositionsReverse = {v: k for k, v in loopPositions.items()} # key, value switched from loopPositions
+		self.loopList = [] # stores tuple (line, scope) that contains "for" loops we are currently inside
+		self.conditionalPositions = self.getConditionalPositions()
+>>>>>>> 26570519eb31b68d76921e1e90252b401ef0f415
 		self.varDicts = [{"nope":"hi"}]
 		self.funcDict = self.getFunctions()
 		self.scope = 0
@@ -170,6 +178,38 @@ class Program():
 		newVar = Variable.Variable(mtype, name, value.value, scope)
 		self.varDicts[-1].update({name : newVar})
 
+	def loop(line):
+	"""
+	Evaluates the given loop expression. Returns true if the loop guard is true.
+	"""
+	# case that it's a while loop
+	if "while" in line:
+		expression = line.search("(.*)", line)
+		if (evalExpression(expression)): # guard is true
+			return True
+		else: # guard is false
+			return False
+
+	# case that it's a for loop
+	else:
+		initialization, guard, update = line.search("(.*)", line).strip(';')
+		if (line, self.scope) not in self.loopList: # loop seen for first time, do initialization and guard
+			self.loopList.append((line, self.scope))
+			self.declare(initialization)
+			if evalExpression(guard):
+				return True
+			else: # expression is false, pop loop from loopList
+				self.loopList.remove(line, self.scope)
+				return False
+
+		else: # loop seen before, do update and guard
+			self.assign(update)
+			if evalExpression(guard):
+				return True
+			else: # expression is false, pop loop from loopDict and go to end of loop
+				self.loopList.remove(line, self.scope)
+				return False
+
 	def mallocParser(self, flag, name, expression, type):
 		#print("expr", expression)
 		hasDigit = False
@@ -288,7 +328,39 @@ class Program():
 		#print(self.lines)
 		return functions
 
-	def getLoops(self):
+	def getConditionalPositions(self):
+		conditionals = []
+		positions = []
+		scope = 0
+		# A "conditional block" starts with if and ends with last bracket of else,
+		# and may have else ifs in between
+		inConditionalBlock = False
+		inLastBlock = False
+
+		for i, line in enumerate(self.lines):
+			if "if" in line and "else" not in line:
+				inConditionalBlock = True
+				positions.append(i)
+			elif "else if" in line:
+				positions.append(i)
+			elif "else" in line and "if" not in line:
+				inLastBlock = True
+				positions.append(i)
+			elif "{" in line:
+				scope += 1
+			elif "}" in line:
+				scope -= 1
+			elif "}" in line and inLastBlock and scope == 1:
+				inConditionalBlock = False
+				inLastBlock == False
+				scope -= 1
+				positions.append(i)
+				conditionals.append(positions)
+
+		return conditionals
+
+
+	def getLoopPositions(self):
 		"""
 		Determines the location of all loops in the program and stores the
 		value of the starting line and end line (last bracket) in a dictionary
