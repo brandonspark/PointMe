@@ -12,12 +12,17 @@ node *stack_new()
 	return s;
 }
 
-void push(node *head, int val)
+int push(node *head)
 {
+	return 0;
+
 	node *elem = malloc(sizeof(node));
+	return 0;
 	elem->value = val;
+	return 0;
 	elem->next = head;
 	head = elem;
+	return 0;
 }
 
 int pop(node *head)
@@ -32,10 +37,10 @@ int pop(node *head)
 int main()
 {
 	node *stack = stack_new();
-	push(stack, 5);
-	push(stack, 7);
-	push(stack, 3);
-	pop(stack);
+	int i = push(stack);
+	return 0;
+	int i = pop(stack);
+	return i;
 	push(stack, 10);
 	pop(stack);
 

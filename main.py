@@ -55,7 +55,6 @@ def skipToBraceLevel (braceLevel, y, funcCode):
 		y += 1
 	return y
 
-
 class Program():
 	def __init__(self, cfile):
 		"""
@@ -112,8 +111,7 @@ class Program():
 				return i
 
 	def getFuncValue(self, funcName, params):
-		nowCopy = copy.deepcopy(self.varDicts[-1])
-		self.varDicts.append(nowCopy)
+		print("=----------------starting funcion", funcName)
 		funcCode = self.funcDict[funcName]
 		returnType = funcCode[0].split()[0]
 		numParams = len(funcCode[0].split(','))
@@ -124,12 +122,22 @@ class Program():
 			for i in range(0, len(params)):
 				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
 		
+		nowCopy = copy.deepcopy(self.varDicts[-1])
+		self.varDicts.append(nowCopy)
+		print("--------------------------------------------------------------------",self.varDicts[-1])
+		
 		braceLevel = 0
 		loopBraceLevels = {}
 		y = 0
 		while y < len(funcCode):
-			print('=-----line', y, funcCode[y], self.scope, self.varDicts[-1])
+			#print('=-----line', y, funcCode[y], self.scope, self.varDicts[-1])
 			line = funcCode[y]
+			if 'pstat' in line:
+				print("pstat:\n", self.varDicts[-1])
+				print(self.heapDict)
+				print(self.scope)
+				print(self.funcDict)
+				1/0
 			if '{' in line:
 				braceLevel += 1
 			if '}' in line:
@@ -150,6 +158,7 @@ class Program():
 			if 'return' in line:
 				rest = line.replace('return', '')[:-1]
 				print("i am returning the evaluation of", rest)
+				print("helloooooooooooooooooo", self.varDicts)
 				return self.evalExpression(rest)
 			elif 'while' in line:
 				loopGuard = self.evalExpression(line[6:])
@@ -189,8 +198,6 @@ class Program():
 				self.varDicts[-1][rest].value = None
 				#print("the heap after freeing is", self.heapDict)
 				#print("the stack after freeing is", self.varDicts[-1])
-			#nowState = self.varDicts[-1].copy()
-			#self.varDicts.append(nowState)
 			self.readLine(line)
 			#self.varDicts.pop()
 			y += 1
@@ -233,8 +240,9 @@ class Program():
 			self.scope -= 1
 			#print('about to scope clear', self.scope, line, self.varDicts)
 			self.scopeClear()
-		print('in scope', self.varDicts[-1])
-
+		else:
+			print("******************************************************** THERE IS A LINE I DONT KNOW HOW TO PROCESS")
+	
 	def scopeClear(self):
 		if len(self.varDicts[-1].keys()) == 0:
 			return
@@ -249,7 +257,6 @@ class Program():
 		if 'malloc' in expression:
 			self.mallocParser(1, name, expression, mtype)
 			return
-		#print('assign', name, expression)
 		newValue = self.evalExpression(expression)
 		#print("new value: ", newValue)
 		#if name[0] == '*' and name[1] != '*': #dereferencing 1x
@@ -670,10 +677,12 @@ class Program():
 			v2 = valueStack.pop()
 			valueStack.append(applyOperator(x, v1, v2))
 		#print("------", self.varDicts[-1])
+		print("heap", self.heapDict)
 		print("returning", valueStack)
 		return valueStack[0]
 
-p = Program('cfile.txt')
+p = Program('cstack.txt')
 print(p.getFuncValue('main', []).value)
+print("=----------------------------------")
 print('after', p.scope)
 print('var', p.varDicts[-1])
