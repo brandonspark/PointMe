@@ -1,5 +1,5 @@
 import numpy as np
-from evalexpression.py import *
+from evalexpression import *
 
 functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
@@ -18,16 +18,16 @@ class Program():
 		self.scope = 0
 		print("hello", self.lines)
 		print("func", self.funcDict)
-		self.readLine('for($I i = 0;')
+		self.declare('*x', 'malloc(sizeof(int) * 2)', '$I')
 
 	def execute(self):
-		index = i
-		while(i < len(self.lines)):
-			self.readLine(self.lines[i])
-			i += 1
+		index = 0
+		while(index < len(self.lines)):
+			self.readLine(self.lines[index])
+			index += 1
 
 	def getFuncValue(self, funcName, params):
-		varDicts.append([])
+		self.varDicts.append([])
 		funcCode = funcDict[funcName]
 		returnType = funcCode[0].split()[0]
 		numParams = len(funcCode[0].split(','))
@@ -44,21 +44,30 @@ class Program():
 				except ValueError as err:
 					print("returning" + str(err))
 					return err
-	def ret(line):
+
+	def ret(self, line):
 		rest = line.replace('return', '')[:-1]
 		print(rest)
 		print(evalexpression.evalExpression(rest))
 		raise ValueError((evalexpression.evalExpression(rest)))
-	def readLine(self, line):
-		flag, condition, (name, expressionString) = self.isValidAssign('$I xab = x + 1;')
-		print('fuck', flag, condition, name, expressionString)
-		if flag: #then it is a declare or assign
-			if condition == 'declare': # it is a declare
-				self.declare(name, expressionString)
-			elif condition == 'assign': # it is an assign
-				self.assign(name, expressionString)
 
-		if 'for' in line[:len('for')]:
+	def readLine(self, line):
+		if line[0] == '$' and line[-1] == ';': #its a declare
+			line = line[:-1]
+			split = line.split()
+			if split[2] != '=':
+				raise Exception('Not a valid assign.')
+			if split[0] not in castMap.keys():
+				raise Exception('Not a valid type.')
+			expr = split[3:]
+			curStr = ''
+			for exp in expr:
+				curStr += exp
+			self.declare(split[1], curStr, split[0])
+		elif line[0] == '$' and line[-1] == ')': #its a function!
+			#do some function magic here
+			None
+		elif 'for' in line[:len('for')]:
 			self.scope += 1
 			rest = line[len('for'):]
 			type = rest[1:2]
@@ -72,55 +81,56 @@ class Program():
 			print(rest)
 		elif 'while' == line[:len('while')]:
 			None
-
-	def assign(self, name, expression):
-		expressionSplit = expression.split('=')
-		newValue = evalExpression(expressionSplit[1])
-	
-		var = varDict[-1][name]
-		var.value = newValue
-		varDict[-1].update({name : var})
-
-	def declare(self, name, expression):
-		sidesOfExpression = expression.split('=')
-		type = sidesOfExpression[0][0:1]
-		value = evalExpression(sidesOfExpression[1])
-		scope = self.scope
-		newVar = Variable(type, name, value, scope)
-		varDict[-1].update({name : newVar})
-
-	def isValidAssign(self, line):
-		hasType = False
-		if line[0] == '$':
-			hasType = True
-		
-		if line[-1] != ';':
-			raise Exception('No semicolon.')
-		else:
-			line = line[:-1]
-
-		split = line.split()
-		if hasType and split[2] != '=':
-			raise Exception('Not a valid assign.')
-		
-		if hasType:	
-			if split[0] not in castMap.keys():
-				raise Exception('Not a valid type.')
-			expr = split[3:]
-			curStr = ''
-			for exp in expr:
-				curStr += exp
-			return True, 'declare', (split[1], curStr)
-		else:
+		elif '=' in line: #tentatively, this is a assign
+			if line[-1] != ';':
+					raise Exception('No semicolon.')
+			else:
+				line = line[:-1]
+			split = line.split()
+			if split[1] != '=':
+				raise Exception('Not a valid assign.')
 			expr = split[2:]
 			curStr = ''
 			for exp in expr:
 				curStr += exp
-			return True, 'assign', (split[0], curStr)
-		return False, None, None
+			if split[0] not in varDicts[-1].keys():
+				raise Exception('Variable doesn\'t exist')
+			self.assign(split[0], curStr)
+		elif line == '{':
+			self.scope += 1
+			return line
+		elif line == '}':
+			self.scope -= 1
+			return line
 
+	def mallocParser(self, name, expression, type):
+		print(expression)
+		expression = expression.replace('malloc', '')
+		expression = expression.replace('(', '')
+		expression = expression.replace(')', '')
+		expression = expression.replace('sizeof', '')
+		expression = expression.replace(' ', '')
+		expression = expression.split('*')
+		if expression[0].isdigit():
+			type = expression[1]
+		elif expression[1].isdigit():
+			type = expression[0]
 
+	def assign(self, name, expression):
+		newValue = evalExpression(expression)
+		var = varDicts[-1][name]
+		var.value = newValue
+		self.varDicts[-1].update({name : var})
 
+	def declare(self, name, expression, type):
+		if '*' in name:
+			type = '$P'
+			self.mallocParser(name, expression, type)
+			return
+		value = evalExpression(expression)
+		scope = self.scope
+		newVar = Variable(type, name, value, scope)
+		self.varDicts[-1].update({name : newVar})
 
 	def shortenTypes(self):
 		"""
