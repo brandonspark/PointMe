@@ -37,6 +37,18 @@ programVariable = Program([{"x": Variable("x", "$I", 46, 0), "y": Variable("y", 
                             "point1": Variable("point1", "$P", 1, 0),
                            "point2": Variable("point2", "$P", 2, 0)}])
 
+# programVariable.varDicts = [{'n1': Variable('n1', '$P', 0, 1), 'n2': Variable('n2', '$P', 1, 1), 'n3': Variable('n3',
+#                                                                                                                 '$P', 2, 1), 'n4': Variable('n4', '$P', 3, 1)}]
+# programVariable.heapDict = {0: {'value': Variable('-', '$$I', 5, 1), 'next': Variable('-', '$P', 1, 1)}, 1: {'value':
+#                                                                                                                  Variable('-', '$$I', 10, 1), 'next': Variable('-', '$P', 2, 1)}, 2: {'value': Variable('-', '$$I', 15, 1), 'next': Variable('-', '$P', 3, 1)}, 3: {'value': Variable('-', '$$I', 20, 1), 'next': Variable('-', '$P', None, 1)}}
+
+# programVariable.varDicts = [{'n1': Variable('n1', '$P', 0, 1), 'n2': Variable('n2', '$P', 1, 1), 'n3': Variable(
+#     'n3', '$P', 2, 1), 'n4': Variable('n4', '$P', 3, 1), 'myFavoriteVals': Variable('myFavoriteVals', '$P', 4, 1)}]
+# programVariable.heapDict = {0: {'value': Variable('-', '$$I', 5, 1), 'next': Variable('-', '$P', 1, 1)}, 1: {'value': Variable('-', '$$I', 10, 1), 'next': Variable('-', '$P', 3, 1)}, 2: {'value': Variable('-', '$$I', 15, 1), 'next': Variable('-', '$P', 3, 1)}, 3: {'value': Variable('-', '$$I', 20, 1), 'next': Variable('-', '$P', 2, 1)}, 4: {'0': Variable('-', '$I', 1, 1), '1': Variable('-', '$I', 3, 1), '2': Variable('-', '$I', 100, 1), '3': Variable('-', '$I', None, 1)}}
+
+programVariable.varDicts = [{'n1': Variable('n1', '$P', 0, 1), 'n2': Variable('n2', '$P', 1, 1), 'n3': Variable('n3', '$P', None, 1), 'n4': Variable('n4', '$P', 3, 1), 'myFavoriteVals': Variable('myFavoriteVals', '$P', 4, 1)}]
+programVariable.heapDict = {0: {'value': Variable('-', '$$I', 5, 1), 'next': Variable('-', '$node', 1, 1)}, 1: {'value': Variable('-', '$$I', 10, 1), 'next': Variable('-', '$node', 3, 1)}, 2: None, 3: {'value': Variable('-', '$$I', 20, 1), 'next': Variable('-', '$node', 2, 1)}, 4: {'0': Variable('-', '$I', 1, 1), '1': Variable('-', '$I', 3, 1), '2': Variable('-', '$I', 100, 1), '3': Variable('-', '$I', None, 1)}}
+
 
 def drawButton(canvas, x, y, width, height, color, border=0):
     x1 = x - width/2
@@ -82,7 +94,7 @@ def drawGroundSymbol(data, canvas, x1, y1, length):
 def init(data):
     #data.tempList = ["x", "y", "z", "zz", "BLAH"]
     data.counter = 0
-    data.variableNames = ["x", "y", "z", "zz", "BLAH", "point1", "point2"]
+    data.variableNames = ['n1','n2','n3','n4','myFavoriteVals']#["x", "y", "z", "zz", "BLAH", "point1", "point2"]
     data.nextVariables = []
     data.program = programVariable
     data.heapDict = {}
@@ -274,6 +286,8 @@ def redrawAll(canvas, data):
                     oldx, oldy = data.drawn[startVariable.value][0], data.drawn[startVariable.value][1]
                     data.lines += [[startVariable.x, startVariable.y, oldx, oldy]]
                     pointerDrawn = True
+                elif startVariable.value is None:
+                    pass
                 else:
                     endVariablesDict = data.program.heapDict[startVariable.value]
                     iter(endVariablesDict.items())
@@ -317,6 +331,8 @@ def redrawAll(canvas, data):
         if varI not in data.drawn:
             x = data.ratio * data.width * 2.5
             varDict = data.program.heapDict[varI]
+            if varDict is None:
+                pass
             iter(varDict.items())
             varList = []
             for key, value in varDict.items():
