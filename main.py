@@ -32,7 +32,6 @@ class Program():
 		self.lines = self.splitLines(self.cleanText(self.readText(cfile)))
 		print(self.lines)
 		self.shortenTypes()
-<<<<<<< HEAD
 		self.structDict = self.getStructs()
 		self.typedefSearch()
 		for type in self.structDict.keys():
@@ -43,13 +42,11 @@ class Program():
 		self.loopPositions = self.getLoops() # key: line number of start of loop, value: line number of end of loop
 		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains for loops we are currently inside
-=======
 		self.funcDict = self.getFunctions()
 		self.loopPositions = self.getLoopPositions() # key: line number of start of loop, value: line number of end of loop
 		self.loopPositionsReverse = {v: k for k, v in loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains "for" loops we are currently inside
 		self.conditionalPositions = self.getConditionalPositions()
->>>>>>> 26570519eb31b68d76921e1e90252b401ef0f415
 		self.varDicts = [{"nope":"hi"}]
 		self.funcDict = self.getFunctions()
 		self.scope = 0
