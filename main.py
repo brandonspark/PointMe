@@ -1,8 +1,8 @@
 import numpy as np
 
-functionTypes = ['I', 'S', 'B', 'F', 'D', 'V', 'L']
+functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
-typeMap = [('int', 'I'), ('string', 'S'), ('bool', 'B'), ('float', 'F'), ('double', 'D'), ('void', 'V'), ('long', 'L')]
+typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
 
 class Program():
 	def __init__(self, cfile):
