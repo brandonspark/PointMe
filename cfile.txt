@@ -1,11 +1,13 @@
-int times3(int x) {
-	int y = x + x;
-	int z = y + x;
-	return z;
+int dub(int x) {
+	return x*2;
+}
+
+int half(int x) {
+	return x/2;
 }
 
 int main() {
 	int x = 10;
-	x = times3(x);
-	return times3(x) + times3(x);
+	int y = 3;
+	return (half(dub(x)));
 }

@@ -20,8 +20,7 @@ def stringIsInt(s):
 		return False
 
 def applyOperator(op, v1, v2):
-	print("v1 and v2 are: ", v1.value, v2.value, type(v1.value), type(v2.value))
-	return Variable.Variable(None, None, (v2.value)+(v1.value), None)
+	return Variable.Variable(None, None, int(eval(str(v2.value)+op+str(v1.value))), None)
 
 class Program():
 	def __init__(self, cfile):
@@ -114,7 +113,7 @@ class Program():
 			self.mallocParser(1, name, expression, mtype)
 			return
 		newValue = self.evalExpression(expression)
-		print("new value: ", newValue)
+#		print("new value: ", newValue)
 		var = self.varDicts[-1][name]
 		var.value = newValue.value
 		self.varDicts[-1].update({name : var})
@@ -146,6 +145,15 @@ class Program():
 		if not hasDigit: #not found digit
 			size = 1
 			type = expression[0]
+	def isValidAssign(self, line):
+		hasType = False
+#		print("line is: ", line)
+		if line[0] == '$':
+			hasType = True
+		
+		if line[-1] != ';':
+			pass
+		#	raise Exception('No semicolon.')
 		else:
 			if expression[0].isdigit():
 				type = expression[1]
@@ -204,7 +212,7 @@ class Program():
 					if scope == 0:
 						break
 			functions[funcName] = goodLines
-		print(self.lines)
+#		print(self.lines)
 		return functions
 
 	def readText(self, cfile):
