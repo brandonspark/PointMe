@@ -1,10 +1,6 @@
 import numpy as np
-<<<<<<< HEAD
-from evalexpression import *
-=======
 #from evalexpression import *
 import Variable
->>>>>>> 57bd8c4d23891160b36308b52e4438a0f2c0149e
 
 functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
@@ -37,32 +33,21 @@ class Program():
 		self.funcDict = self.getFunctions()
 		self.varDicts = [{"nope":"hi"}]
 		self.scope = 0
-<<<<<<< HEAD
-		print("hello", self.lines)
-		print("func", self.funcDict)
-		self.declare('*x', 'malloc(sizeof(int) * 2)', '$I')
-=======
 		self.tmpstate = 0
 
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
->>>>>>> 57bd8c4d23891160b36308b52e4438a0f2c0149e
 
 	def execute(self):
-		index = 0
-		while(index < len(self.lines)):
-			self.readLine(self.lines[index])
-			index += 1
+		index = i
+		while(i < len(self.lines)):
+			self.readLine(self.lines[i])
+			i += 1
 
 	def getFuncValue(self, funcName, params):
-<<<<<<< HEAD
-		self.varDicts.append([])
-		funcCode = funcDict[funcName]
-=======
 		self.varDicts.append({})
 		funcCode = self.funcDict[funcName]
->>>>>>> 57bd8c4d23891160b36308b52e4438a0f2c0149e
 		returnType = funcCode[0].split()[0]
 		numParams = len(funcCode[0].split(','))
 		if numParams != 1:
@@ -70,22 +55,6 @@ class Program():
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
 				declare(paramStrings[i] + " = " + str(params[i]) + ';')
-<<<<<<< HEAD
-			for line in funcCode:
-				try:
-					readLine(line)
-					if 'return' in line:
-						ret(line)
-				except ValueError as err:
-					print("returning" + str(err))
-					return err
-
-	def ret(self, line):
-		rest = line.replace('return', '')[:-1]
-		print(rest)
-		print(evalexpression.evalExpression(rest))
-		raise ValueError((evalexpression.evalExpression(rest)))
-=======
 		for line in funcCode:
 			try:
 				self.readLine(line)
@@ -98,7 +67,6 @@ class Program():
 	def ret(self, line):
 		rest = line.replace('return', '')[:-1]
 		raise ValueError((self.evalExpression(rest)).value)
->>>>>>> 57bd8c4d23891160b36308b52e4438a0f2c0149e
 
 	def readLine(self, line):
 		if line[0] == '$' and line[-1] == ';': #its a declare
@@ -138,8 +106,6 @@ class Program():
 			split = line.split()
 			if split[1] != '=':
 				raise Exception('Not a valid assign.')
-<<<<<<< HEAD
-=======
 			expr = split[2:]
 			curStr = ''
 			for exp in expr:
@@ -218,54 +184,12 @@ class Program():
 				curStr += exp
 			return True, 'declare', (split[1], curStr)
 		else:
->>>>>>> 57bd8c4d23891160b36308b52e4438a0f2c0149e
 			expr = split[2:]
 			curStr = ''
 			for exp in expr:
 				curStr += exp
-<<<<<<< HEAD
-			if split[0] not in varDicts[-1].keys():
-				raise Exception('Variable doesn\'t exist')
-			self.assign(split[0], curStr)
-		elif line == '{':
-			self.scope += 1
-			return line
-		elif line == '}':
-			self.scope -= 1
-			return line
-
-	def mallocParser(self, name, expression, type):
-		print(expression)
-		expression = expression.replace('malloc', '')
-		expression = expression.replace('(', '')
-		expression = expression.replace(')', '')
-		expression = expression.replace('sizeof', '')
-		expression = expression.replace(' ', '')
-		expression = expression.split('*')
-		if expression[0].isdigit():
-			type = expression[1]
-		elif expression[1].isdigit():
-			type = expression[0]
-
-	def assign(self, name, expression):
-		newValue = evalExpression(expression)
-		var = varDicts[-1][name]
-		var.value = newValue
-		self.varDicts[-1].update({name : var})
-
-	def declare(self, name, expression, type):
-		if '*' in name:
-			type = '$P'
-			self.mallocParser(name, expression, type)
-			return
-		value = evalExpression(expression)
-		scope = self.scope
-		newVar = Variable(type, name, value, scope)
-		self.varDicts[-1].update({name : newVar})
-=======
 			return True, 'assign', (split[0], curStr)
 		return False, None, None
->>>>>>> 57bd8c4d23891160b36308b52e4438a0f2c0149e
 
 	def shortenTypes(self):
 		"""
