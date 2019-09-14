@@ -171,85 +171,84 @@ class Program():
 			#print([self.varDicts[-1][x].value for x in self.varDicts[-1].keys()])
 
 	def getFuncValue(self, funcName, params):
+		print("=----------------", self.funcDict)
 		self.varDicts.append({})
 		funcCode = self.funcDict[funcName]
 		returnType = funcCode[0].split()[0]
 		numParams = len(funcCode[0].split(','))
 		#print("num params", numParams)
-		if numParams != 0:
-			#print("declaring params")
+		if len(params) != 0:
+			print("declaring params")
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
 				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
-		index = 0
-		while index < len(funcCode):
-			line = funcCode[index]
-			braceLevel = 0
-			loopBraceLevels = {}
-			y = 0
-			while y < len(funcCode):
-				print(y, funcCode[y], braceLevel)
-				line = funcCode[y]
-				if '{' in line:
-					braceLevel += 1
-				if '}' in line:
-					braceLevel -= 1
-					if braceLevel in loopBraceLevels.keys(): #i.e. we're at the end of the loop
-						print("Were at end of loop")
-						loopGuard, linenum = loopBraceLevels[braceLevel]
-						print(loopGuard)
-						print(self.varDicts[-1])
-						loopGuardTruthValue = self.evalExpression(loopGuard)
-						if loopGuardTruthValue.value == 1:
-							print("loop guard is true")
-							print(funcCode[linenum+1])
-							y = linenum+1
-							continue
-				if 'return' in line:
-					rest = line.replace('return', '')[:-1]
-					print("i am returning the evaluation of", rest)
-					return self.evalExpression(rest)
-				elif 'while' in line:
-					loopGuard = self.evalExpression(line[6:])
-					loopBraceLevels[braceLevel] = (line[6:], y)
-					if not loopGuard:
-						i = braceLevel
+		
+		braceLevel = 0
+		loopBraceLevels = {}
+		y = 0
+		while y < len(funcCode):
+			print(y, funcCode[y], braceLevel)
+			line = funcCode[y]
+			if '{' in line:
+				braceLevel += 1
+			if '}' in line:
+				braceLevel -= 1
+				if braceLevel in loopBraceLevels.keys(): #i.e. we're at the end of the loop
+					print("Were at end of loop")
+					loopGuard, linenum = loopBraceLevels[braceLevel]
+					print(loopGuard)
+					print(self.varDicts[-1])
+					loopGuardTruthValue = self.evalExpression(loopGuard)
+					if loopGuardTruthValue.value == 1:
+						print("loop guard is true")
+						print(funcCode[linenum+1])
+						y = linenum+1
+						continue
+			if 'return' in line:
+				rest = line.replace('return', '')[:-1]
+				print("i am returning the evaluation of", rest)
+				return self.evalExpression(rest)
+			elif 'while' in line:
+				loopGuard = self.evalExpression(line[6:])
+				loopBraceLevels[braceLevel] = (line[6:], y)
+				if not loopGuard:
+					i = braceLevel
+					y += 1
+					while braceLevel != i:
+						thisline = funcCode[y]
+						if '{' in thisLine:
+							braceLevel += 1
+						if '}' in thisLine:
+							braceLevel -= 1
 						y += 1
-						while braceLevel != i:
-							thisline = funcCode[y]
-							if '{' in thisLine:
-								braceLevel += 1
-							if '}' in thisLine:
-								braceLevel -= 1
-							y += 1
-					else: #loop guard true, only happens the first time thru
-						pass
-				elif 'if' in line:
-					print("its an if!\n\n\n")
-					ifCondTruthValue = self.evalExpression(line[2:]).value
-					if ifCondTruthValue:
-						pass
-					else:
-						y = skipToBraceLevel(braceLevel, y, funcCode)
-						print("skipping to line: ", y, funcCode[y])
-						if 'else' in funcCode[y]:
-							y += 1
-						y -= 1
-				elif 'else' in line:
-					print("it's an else that i want to skip!")
+				else: #loop guard true, only happens the first time thru
+					pass
+			elif 'if' in line:
+				print("its an if!\n\n\n")
+				ifCondTruthValue = self.evalExpression(line[2:]).value
+				if ifCondTruthValue:
+					pass
+				else:
 					y = skipToBraceLevel(braceLevel, y, funcCode)
 					print("skipping to line: ", y, funcCode[y])
+					if 'else' in funcCode[y]:
+						y += 1
 					y -= 1
-				elif 'free' in line:
-					rest = line.replace('free(', '')[:-2]
-					#print("the thing to be freed is: ", rest)
-					self.heapDict[self.varDicts[-1][rest].value] = None
-					self.varDicts[-1][rest].value = None
-					#print("the heap after freeing is", self.heapDict)
-					#print("the stack after freeing is", self.varDicts[-1])
+			elif 'else' in line:
+				print("it's an else that i want to skip!")
+				y = skipToBraceLevel(braceLevel, y, funcCode)
+				print("skipping to line: ", y, funcCode[y])
+				y -= 1
+			elif 'free' in line:
+				rest = line.replace('free(', '')[:-2]
+				#print("the thing to be freed is: ", rest)
+				self.heapDict[self.varDicts[-1][rest].value] = None
+				self.varDicts[-1][rest].value = None
+				#print("the heap after freeing is", self.heapDict)
+				#print("the stack after freeing is", self.varDicts[-1])
 
-				self.readLine(line)
-				y += 1
+			self.readLine(line)
+			y += 1
 
 	def readLine(self, line):
 		if line[0] == '$' and line[-1] == ';': #its a declare
@@ -629,6 +628,8 @@ class Program():
 		return False, None
 
 	def evalFunctionParams(self, s):
+		if s == "()":
+			return []
 		s = s[1:-1] #removes the open and close parentheses around the parameters
 		s = s.split(",")
 		params = []
@@ -655,6 +656,8 @@ class Program():
 				valueStack.append(Variable.Variable(None, '$I', int(token), None))
 			elif token in ['true', 'false']:
 				valueStack.append(Variable.Variable(None, '$B', token=='true', None)) 
+			elif token == 'NULL':
+				valueStack.append(Variable.Variable(None, '$P', None, None))
 			elif (token[0] == '"' and token[-1] == '"') or (token[0] == "'" and token[-1] == "'"):
 				#print("added string", token)
 				valueStack.append(Variable.Variable(None, '$S', token[1:-1], None))
