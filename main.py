@@ -31,20 +31,29 @@ class Program():
 		self.lines = self.splitLines(self.cleanText(self.readText(cfile)))
 		print(self.lines)
 		self.shortenTypes()
-		self.funcDict = self.getFunctions()
+		self.structDict = self.getStructs()
+		self.typedefSearch()
+		for type in self.structDict.keys():
+			type = type[1:]
+			for i, line in enumerate(self.lines):
+				line = line.replace(type, '$' + type)
+				self.lines[i] = line
 		self.loopPositions = self.getLoops() # key: line number of start of loop, value: line number of end of loop
-		self.loopPositionsReverse = {v: k for k, v in loopPositions.items()} # key, value switched from loopPositions
+		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains for loops we are currently inside
 		self.varDicts = [{"nope":"hi"}]
-		self.structDict = self.getStructs()
+		self.funcDict = self.getFunctions()
 		self.scope = 0
 		self.heapDict = {}
 		self.heapNum = 0
 
-		self.mallocParser(0, '*x', 	'malloc(sizeof(myStruct))', '$I')
-		print(self.lines)
+		#self.mallocParser(0, '*x', 	'malloc(sizeof(myStruct))', '$I')
+		print('ourlines', self.lines)
 		print(self.heapDict)
 		print(self.heapNum)
+		print(self.mallocParser(0, 'x', 'malloc(sizeof($struct_t))', '$struct_t'))
+		print('current heap', self.heapDict)
+		print('var', self.varDicts[-1]['x'].value)
 		print("woah")
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
@@ -60,11 +69,11 @@ class Program():
 					i += 1
 				else:
 					self.scope += 1
-					i = loopPositions[i]
+					i = self.loopPositions[i]
 			# we have encountered end of a loop, go back to start of loop
 			elif i in [location[1] for location in loopLocations]:
 				self.scope -= 1
-				i = loopPositionsReverse[i]
+				i = self.loopPositionsReverse[i]
 			self.readLine(self.lines[i])
 			i += 1
 
@@ -86,17 +95,19 @@ class Program():
 				return Variable.Variable(None, None, self.evalExpression(rest).value, None)
 
 	def readLine(self, line):
+		print(line)
 		if line[0] == '$' and line[-1] == ';': #its a declare
 			line = line[:-1]
 			split = line.split()
 			if split[2] != '=':
 				raise Exception('Not a valid assign.')
-			if split[0] not in castMap.keys():
+			if split[0] not in castMap.keys() and split[0] not in self.structDict.keys():
 				raise Exception('Not a valid type.')
 			expr = split[3:]
 			curStr = ''
 			for exp in expr:
 				curStr += exp
+			print('banana', split)
 			self.declare(split[1], curStr, split[0])
 		elif line[0] == '$' and line[-1] == ')': #its a function!
 			#do some function magic here
@@ -151,7 +162,7 @@ class Program():
 
 	def declare(self, name, expression, mtype):
 		#print('!!', name)
-		if '*' in name:
+		if 'malloc' in expression:
 			self.mallocParser(0, name, expression, mtype)
 			return
 		value = self.evalExpression(expression)
@@ -175,12 +186,14 @@ class Program():
 		expression = expression.split('*')
 		struct = {}
 		if not hasDigit: #not found digit
+			print('no digit')
 			size = 1
 			type = expression[0]
 			if type in self.structDict.keys():
 				size = len(self.structDict[type])
 				for fieldName in self.structDict[type].keys():
 					struct[fieldName] = Variable.Variable('-', self.structDict[type][fieldName], None, self.scope)
+				print("found type", struct)
 		else:
 			if expression[0].isdigit():
 				type = expression[1]
@@ -307,7 +320,8 @@ class Program():
 		structs = {}
 		print("here", self.lines)
 		for i, line in enumerate(self.lines): #gets all the struct lines
-			if line[:len('struct')] == 'struct':
+			if line[:len('struct')] == 'struct' and line[-1] != ';':
+				print(line)
 				split = line.split()
 				structName = split[1]
 				count = 0
@@ -327,6 +341,17 @@ class Program():
 				structs[structName] = fields
 		return structs
 
+	def typedefSearch(self):
+		print("chief", self.structDict)
+		for line in self.lines:
+			if 'typedef' == line[:len('typedef')]:
+				split = line.split()
+				mid = ''
+				for string in split[1:-1]:
+					mid += string + ' '
+				mid = mid[:-1] 
+				self.structDict['$' + split[-1][:-1]] = self.structDict.pop(split[-2])
+		print("chief", self.structDict)
 	def readText(self, cfile):
 		"""
 		Compiles all the text in the program.
