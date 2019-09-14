@@ -17,6 +17,7 @@ class Program():
 			for type, ID in typeMap:
 				line = line.replace(type, ID)
 				self.lines[i] = line.replace(type, ID)
+			self.lines[i] = line.strip()
 		print("hello", self.lines)
 		print(self.funcDict)
 	
