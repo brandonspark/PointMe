@@ -111,14 +111,17 @@ class Program():
 				return i
 
 	def getFuncValue(self, funcName, params):
-		print("=----------------starting funcion", funcName)
+		print("=----------------starting funcion", funcName, params)
 		funcCode = self.funcDict[funcName]
 		returnType = funcCode[0].split()[0]
 		numParams = len(funcCode[0].split(','))
 		#print("num params", numParams)
 		if len(params) != 0:
-			print("declaring params")
-			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
+			print("declaring params", params, funcName)
+			paramStrings = ['$' + param.replace('*','')[:-1] for param in funcCode[0].split('$')[2:]]	
+			for i, paramString in enumerate(paramStrings):
+				if 'Variable' in paramString:
+					None
 			for i in range(0, len(params)):
 				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
 		
@@ -131,7 +134,9 @@ class Program():
 		y = 0
 		while y < len(funcCode):
 			#print('=-----line', y, funcCode[y], self.scope, self.varDicts[-1])
+			print('ALL THE CODE IS', funcCode)
 			line = funcCode[y]
+			print('------ NEW LINE', line)
 			if 'pstat' in line:
 				print("pstat:\n", self.varDicts[-1])
 				print(self.heapDict)
@@ -198,12 +203,14 @@ class Program():
 				self.varDicts[-1][rest].value = None
 				#print("the heap after freeing is", self.heapDict)
 				#print("the stack after freeing is", self.varDicts[-1])
+			print('our line being passed is', line)
 			self.readLine(line)
 			#self.varDicts.pop()
 			y += 1
 		self.varDicts.pop()
 
 	def readLine(self, line):
+		print('our line is', line)
 		if line[0] == '$' and line[-1] == ';': #its a declare
 			line = line[:-1]
 			split = shlex.split(line,posix=False)
@@ -278,6 +285,7 @@ class Program():
 		if 'malloc' in expression:
 			self.mallocParser(0, name, expression, mtype)
 			return
+		print('expression!', expression)
 		value = self.evalExpression(expression)
 		scope = self.scope
 		newVar = Variable.Variable(name.strip('*'), mtype, value.value, scope)
@@ -584,18 +592,24 @@ class Program():
 		return False, None
 
 	def evalFunctionParams(self, s):
+		print('eval this param', s)
 		if s == "()":
 			return []
 		s = s[1:-1] #removes the open and close parentheses around the parameters
 		s = s.split(",")
 		params = []
 		for param in s:
-			params.append(self.evalExpression(param).value)
+			print('XXXXXXXXXXXXXthis is our param', param, self.evalExpression(param), s)
+			print(isinstance(param, Variable.Variable))
+			if param in self.varDicts[-1].keys():
+				params.append(param)
+			else:
+				params.append(self.evalExpression(param))
 		#print("params", params)
 		return params
 
 	def evalExpression(self, s):
-		print("evaling: ", s)
+		print("evaling: ", repr(s))
 		valueStack = []
 		operatorStack = []
 		for x in spacedThings:
@@ -618,7 +632,9 @@ class Program():
 				#print("added string", token)
 				valueStack.append(Variable.Variable(None, '$S', token[1:-1], None))
 			elif token in self.varDicts[-1].keys():
+				print('im here! im queer!')
 				valueStack.append(self.varDicts[-1][token])
+				print('valuestack', valueStack)
 			elif token[1:] in self.varDicts[-1].keys() and token[0] == "*" and token[1] != '*': #dereferencing
 				#print("deref!")
 				valueStack.append(self.heapDict[(self.varDicts[-1][token[1:]]).value]['0'])
@@ -658,6 +674,7 @@ class Program():
 					valueStack.append(applyOperator(x, v1, v2))
 				operatorStack.append(token)
 			elif token in self.funcDict.keys():
+				print('DSADSAOIDSAHODASOthis is a functioN!', token)
 				paramstring = ""
 				i = 0
 				for z in range(y+1, len(tokens)):
@@ -668,6 +685,7 @@ class Program():
 						i -= 1
 					paramstring += tokens[z]
 					if i == 0:
+						print('a paramstring!', paramstring, self.evalFunctionParams(paramstring))
 						valueStack.append(self.getFuncValue(token, self.evalFunctionParams(paramstring)))
 						break
 			y += 1
@@ -679,6 +697,7 @@ class Program():
 		#print("------", self.varDicts[-1])
 		print("heap", self.heapDict)
 		print("returning", valueStack)
+		print(valueStack[0])
 		return valueStack[0]
 
 p = Program('cstack.txt')
