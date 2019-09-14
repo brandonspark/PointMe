@@ -78,19 +78,9 @@ class Program():
 		elif line[0] == '$' and line[-1] == ')': #its a function!
 			#do some function magic here
 			None
-		elif 'for' in line[:len('for')]:
-			self.scope += 1
-			rest = line[len('for'):]
-			type = rest[1:2]
-			assignString = rest[4:].split()
-			if rest[1] != '$':
-				raise Exception('Didn\'t have a type.')
-			else:
-				name = assignString[0]
-				expression = assignString[2][:-1]
-				self.assign(name, expressionString)
-		elif 'while' == line[:len('while')]:
-			None
+
+		elif 'for' in line or 'while' in line:
+			self.loop(line)
 		elif '=' in line: #tentatively, this is a assign
 			if line[-1] != ';':
 					raise Exception('No semicolon.')
@@ -106,8 +96,13 @@ class Program():
 			if split[0] not in self.varDicts[-1].keys():
 				raise Exception('Variable doesn\'t exist')
 			self.assign(split[0], curStr)
-		elif line == '{' or line == '}':
-			None
+		elif line == '{':
+			self.scope += 1
+		elif line == '}':
+			self.scope -= 1
+			# TODO: get rid of any vars with scope greater than self.scope
+			# and check if any loops in loopStack have scope equal to self.scope
+		elif 
 
 	def assign(self, name, expression):
 		print(expression)
