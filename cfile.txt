@@ -5,7 +5,7 @@ int derefp1(int* x)
 
 int main() 
 {
-	int *y = malloc(sizeof(int));
-	*y = 3;
-	return derefp1(y);
+	int a = 2;
+	int b = 1;
+	return a == (b + 1);
 }
