@@ -1,0 +1,22 @@
+int main() 
+{
+	int x = 0;
+	int y = 2;
+	int z = 10;
+	if (x == 0)
+	{
+		if (z == 11) 
+		{
+			y = 300;
+		}
+		else
+		{
+			y = 200;
+		}
+	} 
+	else 
+	{
+		y = 10;
+	}
+	return y;
+}
