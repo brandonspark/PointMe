@@ -10,10 +10,7 @@ actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
 typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
 typeMap2 = {'$I': 'int', '$S': 'string', '$B': 'bool', '$F': 'float', '$D': 'double', '$L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
-<<<<<<< HEAD
 
-=======
->>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 operators = ["+","-","*","/","(",")","==",'>>','<<','<', '>','>=','<=','!=']
 opReturns = {'+': '$I', '-': '$I', '*': '$I', '/': '$I', '==': '$B', '>>': '$I', '<<': '$I','<':'$B','>':'$B','>=':'$B','<=':'$B','!=':'$B'}
 spacedThings = ["+","/","(",")","==",'>>','<<','>=','<=','!=','[',']','->']
@@ -40,6 +37,23 @@ def concat(l):
 	for string in l:
 		newStr += string
 	return newStr
+
+def skipToBraceLevel (braceLevel, y, funcCode):
+	i = braceLevel
+	braceLevel += 1
+	y += 2
+	while braceLevel != i:				
+		thisLine = funcCode[y]
+		#print("this in if", braceLevel, i, thisLine, y)
+		if '{' in thisLine:
+			braceLevel += 1
+		#	print("bracelevel went up to", braceLevel)
+		if '}' in thisLine:
+			braceLevel -= 1
+		#	print("bracelevel went down to", braceLevel)
+		y += 1
+	return y
+
 
 class Program():
 	def __init__(self, cfile):
@@ -87,33 +101,15 @@ class Program():
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
-<<<<<<< HEAD
 		self.execute()
 		print('var', self.varDicts[-1])
 		print('heap', self.heapDict)
 		print('func', self.funcDict)
-=======
-		#self.execute()
-		print('var', self.varDicts[-1])
-		print('heap', self.heapDict)
 
->>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 	def findMain(self):
 		for i, line in enumerate(self.lines):
 			if 'main' in line:
 				return i
-<<<<<<< HEAD
-=======
-
-	def getLoops(self):
-		return {"hi":"hi"}
-
-#		self.execute()
-#	def findMain(self):
-#		for i, line in enumerate(self.lines):
-#			if 'main' in line:
-#				return i
->>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 
 	def execute(self):
 		return 	 	
@@ -185,32 +181,6 @@ class Program():
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
 				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
-<<<<<<< HEAD
-		braceLevel = 0
-		loopBraceLevels = {}
-		for y in range(0, len(funcCode)):
-			line = funcCode[y]
-			if '{' in line:
-				braceLevel += 1
-			if '}' in line:
-				braceLevel -= 1
-#				if braceLevel in loopBraceLevels.keys()
-			if 'return' in line:
-				rest = line.replace('return', '')[:-1]
-				print("rest", rest, self.varDicts)
-				return self.evalExpression(rest)
-			elif 'while' in line:
-				loopGuard = self.evalExpression(line[6:])
-				if not loopGuard:
-					i = braceLevel
-					y += 1
-					while braceLevel != i:
-						thisline = funcCode[y]
-						if '{' in thisLine:
-							braceLevel += 1
-						if '}' in thisLine:
-							braceLevel -= 1
-=======
 		index = 0
 		while index < len(funcCode):
 			line = funcCode[index]
@@ -237,13 +207,13 @@ class Program():
 							continue
 				if 'return' in line:
 					rest = line.replace('return', '')[:-1]
+					print("i am returning the evaluation of", rest)
 					return self.evalExpression(rest)
 				elif 'while' in line:
 					loopGuard = self.evalExpression(line[6:])
 					loopBraceLevels[braceLevel] = (line[6:], y)
 					if not loopGuard:
 						i = braceLevel
->>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 						y += 1
 						while braceLevel != i:
 							thisline = funcCode[y]
@@ -254,6 +224,30 @@ class Program():
 							y += 1
 					else: #loop guard true, only happens the first time thru
 						pass
+				elif 'if' in line:
+					print("its an if!\n\n\n")
+					ifCondTruthValue = self.evalExpression(line[2:]).value
+					if ifCondTruthValue:
+						pass
+					else:
+						y = skipToBraceLevel(braceLevel, y, funcCode)
+						print("skipping to line: ", y, funcCode[y])
+						if 'else' in funcCode[y]:
+							y += 1
+						y -= 1
+				elif 'else' in line:
+					print("it's an else that i want to skip!")
+					y = skipToBraceLevel(braceLevel, y, funcCode)
+					print("skipping to line: ", y, funcCode[y])
+					y -= 1
+				elif 'free' in line:
+					rest = line.replace('free(', '')[:-2]
+					#print("the thing to be freed is: ", rest)
+					self.heapDict[self.varDicts[-1][rest].value] = None
+					self.varDicts[-1][rest].value = None
+					#print("the heap after freeing is", self.heapDict)
+					#print("the stack after freeing is", self.varDicts[-1])
+
 				self.readLine(line)
 				y += 1
 
@@ -274,19 +268,6 @@ class Program():
 		elif line[0] == '$' and line[-1] == ')': #its a function!
 			#do some function magic here
 			None
-<<<<<<< HEAD
-=======
-		#elif 'while' in line:
-		#	if (loop guard false):
-		#
-		#	self.loop(line)
-		#elif '=' in line: #tentatively, this is a assign
-		#	if line[-1] != ';':
-		#			raise Exception('No semicolon.')
-		#	else:
-		#		line = line[:-1]
-		#	split = shlex.split(line)
->>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 		elif '=' in line and line[-1] == ';': #tentatively, this is a assign
 			line = line[:-1]
 			split = line.split()
@@ -300,10 +281,6 @@ class Program():
 				curStr += exp
 			if split[0] not in self.varDicts[-1].keys() and split[0].strip('*') not in self.varDicts[-1].keys():
 				pass
-<<<<<<< HEAD
-=======
-				#raise Exception('Variable doesn\'t exist')
->>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 			self.assign(split[0], curStr)
 		elif line == '{':
 			self.scope += 1
@@ -341,11 +318,8 @@ class Program():
 
 	def declare(self, name, expression, mtype):
 		#print('!!', name)
-<<<<<<< HEAD
-=======
 		name = name.strip('*')
 		print('declare', name, expression, mtype)
->>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 		if 'malloc' in expression:
 			self.mallocParser(0, name, expression, mtype)
 			return
@@ -674,11 +648,7 @@ class Program():
 		#print('varDicts', self.varDicts[-1])
 		y = 0
 		while y < len(tokens):
-<<<<<<< HEAD
 			print(y, tokens[y], operatorStack, valueStack, self.varDicts[-1])
-=======
-			print(y, tokens[y], operatorStack, valueStack)
->>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 			token = tokens[y]
 			#print(token)
 			if stringIsInt(token):
