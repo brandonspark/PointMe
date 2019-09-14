@@ -3,16 +3,17 @@ import numpy as np
 import Variable
 import string
 import re
+import shlex
 
 functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
 typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
 typeMap2 = {'$I': 'int', '$S': 'string', '$B': 'bool', '$F': 'float', '$D': 'double', '$L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
-operators = ["+","-","*","/","(",")","==",'>>','<<']
-opReturns = {'+': '$I', '-': '$I', '*': '$I', '/': '$I', '==': '$B', '>>': '$I', '<<': '$I'}
-spacedOperators = ["+","-","/","(",")","==",'>>','<<']
-precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1,'>>':4,'<<':4 }
+operators = ["+","-","*","/","(",")","==",'>>','<<','<', '>','>=','<=','!=']
+opReturns = {'+': '$I', '-': '$I', '*': '$I', '/': '$I', '==': '$B', '>>': '$I', '<<': '$I','<':'$B','>':'$B','>=':'$B','<=':'$B','!=':'$B'}
+spacedThings = ["+","-","/","(",")","==",'>>','<<','>=','<=','!=','[',']']
+precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1,'>>':4,'<<':4,'<':1,'>':1,'>=':1,'<=':1,'!=':2}
 
 def stringIsInt(s):
 	try:
@@ -23,8 +24,12 @@ def stringIsInt(s):
 
 def applyOperator(op, v1, v2):
 	if op in operators:
-		print("types: ", (v1.type), v2.type)
-		return Variable.Variable(None, opReturns[op], castMap[v1.type](eval(str(v2.value)+op+str(v1.value))), None)
+		#print("types: ", (v1.type), v2.type)
+		if v1.type == '$I' or v1.type == '$B':
+			#print("evaluating", (str(v2.value)+op+str(v1.value)))
+			return Variable.Variable(None, opReturns[op], castMap[v1.type](eval(str(v2.value)+op+str(v1.value))), None)
+		elif v1.type == '$S':
+			return Variable.Variable(None, opReturns[op], castMap[v1.type](eval("'"+str(v2.value)+"'"+op+"'"+str(v1.value)+"'")), None)
 
 class Program():
 	def __init__(self, cfile):
@@ -38,7 +43,7 @@ class Program():
 		self.loopPositions = self.getLoops() # key: line number of start of loop, value: line number of end of loop
 		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains for loops we are currently inside
-		self.varDicts = [{"nope":"hi"}]
+		self.varDicts = [{}]
 		self.structDict = self.getStructs()
 		self.typedefSearch()
 		for type in self.structDict.keys():
@@ -67,6 +72,8 @@ class Program():
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
+	def getLoops(self):
+		return {"hi":"hi"}
 
 	def execute(self):
 		index = 0
@@ -107,7 +114,7 @@ class Program():
 		print(line)
 		if line[0] == '$' and line[-1] == ';': #its a declare
 			line = line[:-1]
-			split = line.split()
+			split = shlex.split(line,posix=False)
 			if split[2] != '=':
 				raise Exception('Not a valid assign.')
 			if split[0] not in castMap.keys() and split[0] not in self.structDict.keys():
@@ -129,7 +136,7 @@ class Program():
 					raise Exception('No semicolon.')
 			else:
 				line = line[:-1]
-			split = line.split()
+			split = shlex.split(line)
 			if split[1] != '=':
 				print("split:", split)
 				#pass
@@ -139,7 +146,8 @@ class Program():
 			for exp in expr:
 				curStr += exp
 			if split[0] not in self.varDicts[-1].keys() and split[0].strip('*') not in self.varDicts[-1].keys():
-				raise Exception('Variable doesn\'t exist')
+				pass
+				#raise Exception('Variable doesn\'t exist')
 			self.assign(split[0], curStr)
 		elif line == '{':
 			self.scope += 1
@@ -161,10 +169,12 @@ class Program():
 			return
 		newValue = self.evalExpression(expression)
 		#print("new value: ", newValue)
-		if name[0] == '*' and name[1] != '*': #dereferencing 1x
-			print(name)
-			self.heapDict[(self.varDicts[-1][name[1:]]).value][0] = Variable.Variable(None, None, newValue.value, None)
+		#if name[0] == '*' and name[1] != '*': #dereferencing 1x
+		#	print(name)
+		#	self.heapDict[(self.varDicts[-1][name[1:]]).value]['0'] = Variable.Variable(None, None, newValue.value, None)
 		# TODO implement dereferencing 2x or more
+		if '*' in name or '[' in name:
+			self.evalExpression(name).value = self.evalExpression(expression).value
 		else:
 			var = self.varDicts[-1][name]
 			var.value = newValue.value
@@ -361,7 +371,6 @@ class Program():
 
 		return conditionals
 
-
 	def getLoopPositions(self):
 		"""
 		Determines the location of all loops in the program and stores the
@@ -426,6 +435,7 @@ class Program():
 				mid = mid[:-1] 
 				self.structDict['$' + split[-1][:-1]] = self.structDict.pop(split[-2])
 		print("chief", self.structDict)
+
 	def readText(self, cfile):
 		"""
 		Compiles all the text in the program.
@@ -495,30 +505,43 @@ class Program():
 		return params
 
 	def evalExpression(self, s):
-		#print("evaling: ", s)
+		print("evaling: ", s)
 		valueStack = []
 		operatorStack = []
-		for x in spacedOperators:
+		for x in spacedThings:
 			s = s.replace(x, " "+x+" ")
-		tokens = s.split()
-		#print('tokens: ', tokens)
+		tokens = shlex.split(s,posix=False)
+		print('tokens: ', tokens)
 		#print('varDicts', self.varDicts[-1])
 		y = 0
 		while y < len(tokens):
 			#print(y, tokens[y], operatorStack, valueStack)
 			token = tokens[y]
+			#print(token)
 			if stringIsInt(token):
 				valueStack.append(Variable.Variable(None, '$I', int(token), None))
-			if token in ['true', 'false']:
+			elif token in ['true', 'false']:
 				valueStack.append(Variable.Variable(None, '$B', token=='true', None)) 
+			elif (token[0] == '"' and token[-1] == '"') or (token[0] == "'" and token[-1] == "'"):
+				#print("added string", token)
+				valueStack.append(Variable.Variable(None, '$S', token[1:-1], None))
 			elif token in self.varDicts[-1].keys():
 				valueStack.append(self.varDicts[-1][token])
 			elif token[1:] in self.varDicts[-1].keys() and token[0] == "*" and token[1] != '*': #dereferencing
-				print("deref!")
-				valueStack.append(self.heapDict[(self.varDicts[-1][token[1:]]).value][0])
+				#print("deref!")
+				valueStack.append(self.heapDict[(self.varDicts[-1][token[1:]]).value]['0'])
 			elif token.strip('*') in self.varDicts[-1].keys() and token[0] == "*": #dereferencing more than once
-				print("deref! multiple!")
-				valueStack.append(self.heapDict[self.evalExpression(token[1:]).value][0])
+				#print("deref! multiple!")
+				valueStack.append(self.heapDict[self.evalExpression(token[1:]).value]['0'])
+			elif token == "[": #indexing into array
+				array = valueStack.pop()
+				indexexpr = ""
+				for nexttoken in tokens[y+1:]:
+					if nexttoken == "]":
+						valueStack.append(self.heapDict[array.value][str(self.evalExpression(indexexpr).value)])
+						break
+					indexexpr += nexttoken
+					y += 1
 			elif token == "(":
 				operatorStack.append(token)
 			elif token == ")":
