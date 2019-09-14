@@ -10,9 +10,10 @@ actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
 typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
 typeMap2 = {'$I': 'int', '$S': 'string', '$B': 'bool', '$F': 'float', '$D': 'double', '$L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
+
 operators = ["+","-","*","/","(",")","==",'>>','<<','<', '>','>=','<=','!=']
 opReturns = {'+': '$I', '-': '$I', '*': '$I', '/': '$I', '==': '$B', '>>': '$I', '<<': '$I','<':'$B','>':'$B','>=':'$B','<=':'$B','!=':'$B'}
-spacedThings = ["+","-","/","(",")","==",'>>','<<','>=','<=','!=','[',']']
+spacedThings = ["+","/","(",")","==",'>>','<<','>=','<=','!=','[',']','->']
 precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1,'>>':4,'<<':4,'<':1,'>':1,'>=':1,'<=':1,'!=':2}
 
 def stringIsInt(s):
@@ -30,6 +31,12 @@ def applyOperator(op, v1, v2):
 			return Variable.Variable(None, opReturns[op], castMap[v1.type](eval(str(v2.value)+op+str(v1.value))), None)
 		elif v1.type == '$S':
 			return Variable.Variable(None, opReturns[op], castMap[v1.type](eval("'"+str(v2.value)+"'"+op+"'"+str(v1.value)+"'")), None)
+
+def concat(l):
+	newStr = ''
+	for string in l:
+		newStr += string
+	return newStr
 
 class Program():
 	def __init__(self, cfile):
@@ -55,7 +62,7 @@ class Program():
 		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains "for" loops we are currently inside
 		self.conditionalPositions = self.getConditionalPositions()
-		self.varDicts = [{"nope":"hi"}]
+		self.varDicts = [{}]
 		self.funcDict = self.getFunctions()
 		self.scope = 0
 		self.heapDict = {}
@@ -68,30 +75,84 @@ class Program():
 		print(self.mallocParser(0, 'x', 'malloc(sizeof($struct_t))', '$struct_t'))
 		print('current heap', self.heapDict)
 		print('var', self.varDicts[-1]['x'].value)
+		print('cond', self.conditionalPositions)
+		f = open('output.txt', 'w')
+		for i, line in enumerate(self.lines):
+			f.write(line + '\n')
+		print(self.conditionalPositions)
 		print("woah")
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
+
 	def getLoops(self):
 		return {"hi":"hi"}
 
+#		self.execute()
+#	def findMain(self):
+#		for i, line in enumerate(self.lines):
+#			if 'main' in line:
+#				return i
+
 	def execute(self):
-		index = 0
-		while(i < len(self.lines)):
+		return 	 	
+		index = self.findMain()
+		while(index < len(self.lines)):
 			# we have encountered start of a loop, evaluate loop and react accordingly
-			if i in [location[0] for location in loopLocations]:
-				# loop guard evaluated to true
-				if (self.loop(self.lines[i])):
-					i += 1
-				else:
+			#print('now', index, self.lines[index])
+			if index in self.loopPositions.keys():
+				if 'for' in self.lines[index]: #if its a for loop
+					#print('found a for')
+					#declare the vars, push the relevant data to loopList
+					split = self.lines[index][4:-1].split()
 					self.scope += 1
-					i = self.loopPositions[i]
+					self.declare(split[1], concat(split[3:]), split[0])
+					cond = self.lines[index + 1][:-1]
+					action = self.lines[index + 2][:-1]
+					firstBrace = index + 3
+					lastBrace = self.loopPositions[index]
+					packet = (cond, action, firstBrace, lastBrace)
+					self.loopList.append(packet)
+					#print(self.loopList)
+					#print('set i = 0')
+					# loop guard evaluated to true
+					if (self.loop(self.loopList[-1][0])):
+						index = self.loopList[-1][2]
+						#print('ive been sent to', self.lines[index])
+					else:
+						index = self.loopList[-1][3] #will send to } and take care of scope
+				else: #its a while loop
+					cond = self.lines[index][5:].lstrip('(').rstrip(')')
+					firstBrace = index + 1
+					lastBrace = self.loopPositions[index]
+					packet = (cond, None, firstBrace + 1, lastBrace)
+					self.loopList.append(packet)
 			# we have encountered end of a loop, go back to start of loop
-			elif i in [location[1] for location in loopLocations]:
-				self.scope -= 1
-				i = self.loopPositionsReverse[i]
-			self.readLine(self.lines[i])
-			i += 1
+			#print('again', self.loopList)
+			if len(self.loopList) != 0:
+				if index >= self.loopList[-1][3]: #if we're past the loop
+					if self.loopList[-1][1][-2:] == '++':
+						self.varDicts[-1][self.loopList[-1][1][:-2]].value += 1
+						#print('i++: i =', self.varDicts[-1][self.loopList[-1][1][:-2]].value)
+					elif self.loopList[-1][1][-2:] == '--':
+						self.varDicts[-1][self.loopList[-1][1][:-2]].value -= 1
+					if self.loop(self.loopList[-1][0]).value: #if loop condition still holds
+						#print('if i < 5: True')
+						index = self.loopList[-1][2] #send back to front of loop
+					else:
+						#print('if i < 5: False')
+						self.loopList.pop()
+			if 'if' == self.lines[index][:len('if')]: #if we've found an if
+				cond = self.lines[index][len('if'):]
+				cond = cond.lstrip('(').rstrip(')')
+				print('here we are', self.lines[index], cond)
+				if self.loop(cond).value:
+					None
+			#print(index, self.scope, self.lines[index], self.varDicts[-1])
+			self.readLine(self.lines[index])
+			index += 1
+			#print(index, self.varDicts[-1])
+			#print([self.varDicts[-1][x].value for x in self.varDicts[-1].keys()])
 
 	def getFuncValue(self, funcName, params):
 		self.varDicts.append({})
@@ -104,14 +165,35 @@ class Program():
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
 				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
-		for line in funcCode:
+		braceLevel = 0
+		loopBraceLevels = {}
+		for y in range(0, len(funcCode)):
+			line = funcCode[y]
+			if '{' in line:
+				braceLevel += 1
+			if '}' in line:
+				braceLevel -= 1
+#				if braceLevel in loopBraceLevels.keys()
 			if 'return' in line:
 				rest = line.replace('return', '')[:-1]
 				return self.evalExpression(rest)
+			elif 'while' in line:
+				loopGuard = self.evalExpression(line[6:])
+				if not loopGuard:
+					i = braceLevel
+					y += 1
+					while braceLevel != i:
+						thisline = funcCode[y]
+						if '{' in thisLine:
+							braceLevel += 1
+						if '}' in thisLine:
+							braceLevel -= 1
+						y += 1
+				else: #loop guard true
+					pass
 			self.readLine(line)
 
 	def readLine(self, line):
-		print(line)
 		if line[0] == '$' and line[-1] == ';': #its a declare
 			line = line[:-1]
 			split = shlex.split(line,posix=False)
@@ -123,20 +205,23 @@ class Program():
 			curStr = ''
 			for exp in expr:
 				curStr += exp
-			print('banana', split)
 			self.declare(split[1], curStr, split[0])
 		elif line[0] == '$' and line[-1] == ')': #its a function!
 			#do some function magic here
 			None
-
-		elif 'for' in line or 'while' in line:
-			self.loop(line)
-		elif '=' in line: #tentatively, this is a assign
-			if line[-1] != ';':
-					raise Exception('No semicolon.')
-			else:
-				line = line[:-1]
-			split = shlex.split(line)
+#		elif 'while' in line:
+#			if (loop guard false):
+#
+#			self.loop(line)
+		#elif '=' in line: #tentatively, this is a assign
+		#	if line[-1] != ';':
+		#			raise Exception('No semicolon.')
+		#	else:
+		#		line = line[:-1]
+		#	split = shlex.split(line)
+		elif '=' in line and line[-1] == ';': #tentatively, this is a assign
+			line = line[:-1]
+			split = line.split()
 			if split[1] != '=':
 				print("split:", split)
 				#pass
@@ -151,30 +236,33 @@ class Program():
 			self.assign(split[0], curStr)
 		elif line == '{':
 			self.scope += 1
-			return line
 		elif line == '}':
 			self.scope -= 1
+			#print('about to scope clear', self.scope, line, self.varDicts)
 			self.scopeClear()
-			return line
 
 	def scopeClear(self):
-		for var in varDicts[-1].keys():
-			if self.scope < var.scope:
-				varDicts[-1].pop(var)
+		if len(self.varDicts[-1].keys()) == 0:
+			return
+		for var in self.varDicts[-1].copy().keys():
+			if self.scope < self.varDicts[-1][var].scope:
+				self.varDicts[-1].pop(var)
 
 	def assign(self, name, expression):
-		#print("expression is", expression)
+		print("assign expression is", expression)
 		if 'malloc' in expression:
 			self.mallocParser(1, name, expression, mtype)
 			return
+		#print('assign', name, expression)
 		newValue = self.evalExpression(expression)
 		#print("new value: ", newValue)
 		#if name[0] == '*' and name[1] != '*': #dereferencing 1x
 		#	print(name)
 		#	self.heapDict[(self.varDicts[-1][name[1:]]).value]['0'] = Variable.Variable(None, None, newValue.value, None)
 		# TODO implement dereferencing 2x or more
-		if '*' in name or '[' in name:
+		if '*' in name or '[' in name or '->' in name:
 			self.evalExpression(name).value = self.evalExpression(expression).value
+			print("assigned to: ", self.heapDict)
 		else:
 			var = self.varDicts[-1][name]
 			var.value = newValue.value
@@ -190,37 +278,11 @@ class Program():
 		newVar = Variable.Variable(name, mtype, value.value, scope)
 		self.varDicts[-1].update({name : newVar})
 
-	def loop(self, line):
+	def loop(self, cond):
 		"""
-		Evaluates the given loop expression. Returns true if the loop guard is true.
+		Return true if the given condition is true.
 		"""
-		# case that it's a while loop
-		if "while" in line:
-			expression = line.search("(.*)", line)
-			if (evalExpression(expression)): # guard is true
-				return True
-			else: # guard is false
-				return False
-
-		# case that it's a for loop
-		else:
-			initialization, guard, update = line.search("(.*)", line).strip(';')
-			if (line, self.scope) not in self.loopList: # loop seen for first time, do initialization and guard
-				self.loopList.append((line, self.scope))
-				self.declare(initialization)
-				if evalExpression(guard):
-					return True
-				else: # expression is false, pop loop from loopList
-					self.loopList.remove(line, self.scope)
-					return False
-
-			else: # loop seen before, do update and guard
-				self.assign(update)
-				if evalExpression(guard):
-					return True
-				else: # expression is false, pop loop from loopDict and go to end of loop
-					self.loopList.remove(line, self.scope)
-					return False
+		return self.evalExpression(cond)
 
 	def mallocParser(self, flag, name, expression, type):
 		#print("expr", expression)
@@ -238,14 +300,12 @@ class Program():
 		expression = expression.split('*')
 		struct = {}
 		if not hasDigit: #not found digit
-			print('no digit')
 			size = 1
 			type = expression[0]
 			if type in self.structDict.keys():
 				size = len(self.structDict[type])
 				for fieldName in self.structDict[type].keys():
 					struct[fieldName] = Variable.Variable('-', self.structDict[type][fieldName], None, self.scope)
-				print("found type", struct)
 		else:
 			if expression[0].isdigit():
 				type = expression[1]
@@ -349,25 +409,50 @@ class Program():
 		inConditionalBlock = False
 		inLastBlock = False
 
+		currentBlock = {}
+		pair = []
+		stack = []
 		for i, line in enumerate(self.lines):
+			print(pair)
 			if "if" in line and "else" not in line:
-				inConditionalBlock = True
-				positions.append(i)
-			elif "else if" in line:
-				positions.append(i)
-			elif "else" in line and "if" not in line:
+				if inConditionalBlock: #we were in the middle of another if
+					stack.append((currentBlock, pair))
+					pair = []
+					inConditionalBlock = True
+					pair.append(i)
+				else:
+					inConditionalBlock = True
+					pair.append(i)
+			elif "else if" in line and inConditionalBlock:
+				print('found and appended')
+				pair.append(i)
+			elif "else" in line and "if" not in line and inConditionalBlock:
 				inLastBlock = True
-				positions.append(i)
+				pair.append(i)
 			elif "{" in line:
 				scope += 1
-			elif "}" in line:
+			elif '}' in line:
 				scope -= 1
-			elif "}" in line and inLastBlock and scope == 1:
-				inConditionalBlock = False
-				inLastBlock == False
-				scope -= 1
-				positions.append(i)
-				conditionals.append(positions)
+				if "}" in line and inConditionalBlock and not inLastBlock: 
+					pair.append(i)
+					currentBlock[pair[0]] = pair[1]
+					pair = []
+					if 'else if' not in self.lines[i + 1] and 'else' not in self.lines[i + 1]: #its the last
+						print("no go")
+						inConditionalBlock = False
+						if len(stack) != 0:
+							inConditionalBlock = True
+							currentBlock, pair = stack.pop()
+						return
+				elif inLastBlock and inConditionalBlock: 
+					inConditionalBlock = False
+					inLastBlock == False
+					scope -= 1
+					currentBlock[pair[0]] = i
+					pair = []
+					conditionals.append(currentBlock)
+					currentBlock = {}
+		print(conditionals)
 
 		return conditionals
 
@@ -385,13 +470,14 @@ class Program():
 			if "for" in line or "while" in line:
 				inLoop = True
 				start = i
-			if "{" in line and inLoop:
-				scope += 1
-			if "}" in line and inLoop:
-				scope -= 1
-				if scope == 0:
-					inLoop = False
-					loops[start] = i
+				for j, line in enumerate(self.lines[i:]):
+					if "{" in line and inLoop:
+						scope += 1
+					if "}" in line and inLoop:
+						scope -= 1
+						if scope == 0:
+							inLoop = False
+							loops[start] = i + j
 		return loops
 
 	def getStructs(self):
@@ -401,10 +487,8 @@ class Program():
 		"""
 
 		structs = {}
-		print("here", self.lines)
 		for i, line in enumerate(self.lines): #gets all the struct lines
 			if line[:len('struct')] == 'struct' and line[-1] != ';':
-				print(line)
 				split = line.split()
 				structName = split[1]
 				count = 0
@@ -425,7 +509,6 @@ class Program():
 		return structs
 
 	def typedefSearch(self):
-		print("chief", self.structDict)
 		for line in self.lines:
 			if 'typedef' == line[:len('typedef')]:
 				split = line.split()
@@ -434,7 +517,6 @@ class Program():
 					mid += string + ' '
 				mid = mid[:-1] 
 				self.structDict['$' + split[-1][:-1]] = self.structDict.pop(split[-2])
-		print("chief", self.structDict)
 
 	def readText(self, cfile):
 		"""
@@ -536,12 +618,19 @@ class Program():
 			elif token == "[": #indexing into array
 				array = valueStack.pop()
 				indexexpr = ""
+				print(self.heapDict)
 				for nexttoken in tokens[y+1:]:
 					if nexttoken == "]":
 						valueStack.append(self.heapDict[array.value][str(self.evalExpression(indexexpr).value)])
 						break
 					indexexpr += nexttoken
 					y += 1
+			elif token == '->':
+				y += 1
+				array = valueStack.pop()
+				structfield = tokens[y]
+				valueStack.append(self.heapDict[array.value][str(structfield)])
+				print("struct field: ", structfield)
 			elif token == "(":
 				operatorStack.append(token)
 			elif token == ")":
@@ -580,5 +669,5 @@ class Program():
 		#print("returning", valueStack[0])
 		return valueStack[0]
 
-p = Program('cfile.txt')
+p = Program('cfile2.txt')
 print(p.getFuncValue('main', []).value)
