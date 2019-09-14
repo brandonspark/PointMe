@@ -1,11 +1,27 @@
 import numpy as np
-from evalexpression.py import *
+#from evalexpression import *
+import Variable
 
 functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
 typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
 typeMap2 = {'I': 'int', 'S': 'string', 'B': 'bool', 'F': 'float', 'D': 'double', 'L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
+operators = ["+","-","*","/","(",")","=="]
+precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1}
+
+
+def stringIsInt(s):
+	try:
+		int(s)
+		return True
+	except ValueError:
+		return False
+
+def applyOperator(op, v1, v2):
+	print("v1 and v2 are: ", v1.value, v2.value)
+	if op in operators:
+		return v2.value+v1.value
 
 class Program():
 	def __init__(self, cfile):
@@ -15,10 +31,13 @@ class Program():
 		self.lines = self.splitLines(self.cleanText(self.readText(cfile)))
 		self.shortenTypes()
 		self.funcDict = self.getFunctions()
+		self.varDicts = [{"nope":"hi"}]
 		self.scope = 0
-		print("hello", self.lines)
-		print("func", self.funcDict)
-		self.readLine('for($I i = 0;')
+		self.tmpstate = 0
+
+		#print("hello", self.lines)
+		#print("func", self.funcDict)
+		#self.readLine('for($I i = 0;')
 
 	def execute(self):
 		index = i
@@ -27,8 +46,8 @@ class Program():
 			i += 1
 
 	def getFuncValue(self, funcName, params):
-		varDicts.append([])
-		funcCode = funcDict[funcName]
+		self.varDicts.append({})
+		funcCode = self.funcDict[funcName]
 		returnType = funcCode[0].split()[0]
 		numParams = len(funcCode[0].split(','))
 		if numParams != 1:
@@ -36,29 +55,36 @@ class Program():
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
 				declare(paramStrings[i] + " = " + str(params[i]) + ';')
-			for line in funcCode:
-				try:
-					readLine(line)
-					if 'return' in line:
-						ret(line)
-				except ValueError as err:
-					print("returning" + str(err))
-					return err
-	def ret(line):
+		for line in funcCode:
+			try:
+				self.readLine(line)
+				if 'return' in line:
+					self.ret(line)
+			except ValueError as err:
+				print("returning", str(err))
+				return err
+	
+	def ret(self, line):
 		rest = line.replace('return', '')[:-1]
-		print(rest)
-		print(evalexpression.evalExpression(rest))
-		raise ValueError((evalexpression.evalExpression(rest)))
-	def readLine(self, line):
-		flag, condition, (name, expressionString) = self.isValidAssign('$I xab = x + 1;')
-		print('fuck', flag, condition, name, expressionString)
-		if flag: #then it is a declare or assign
-			if condition == 'declare': # it is a declare
-				self.declare(name, expressionString)
-			elif condition == 'assign': # it is an assign
-				self.assign(name, expressionString)
+		raise ValueError((self.evalExpression(rest)).value)
 
-		if 'for' in line[:len('for')]:
+	def readLine(self, line):
+		if line[0] == '$' and line[-1] == ';': #its a declare
+			line = line[:-1]
+			split = line.split()
+			if split[2] != '=':
+				raise Exception('Not a valid assign.')
+			if split[0] not in castMap.keys():
+				raise Exception('Not a valid type.')
+			expr = split[3:]
+			curStr = ''
+			for exp in expr:
+				curStr += exp
+			self.declare(split[1], curStr, split[0])
+		elif line[0] == '$' and line[-1] == ')': #its a function!
+			#do some function magic here
+			None
+		elif 'for' in line[:len('for')]:
 			self.scope += 1
 			rest = line[len('for'):]
 			type = rest[1:2]
@@ -72,40 +98,86 @@ class Program():
 			print(rest)
 		elif 'while' == line[:len('while')]:
 			None
+		elif '=' in line: #tentatively, this is a assign
+			if line[-1] != ';':
+					raise Exception('No semicolon.')
+			else:
+				line = line[:-1]
+			split = line.split()
+			if split[1] != '=':
+				raise Exception('Not a valid assign.')
+			expr = split[2:]
+			curStr = ''
+			for exp in expr:
+				curStr += exp
+			if split[0] not in self.varDicts[-1].keys():
+				raise Exception('Variable doesn\'t exist')
+			self.assign(split[0], curStr)
+		elif line == '{' or line == '}':
+			None
+
+	def readLine2(self, line):
+		#flag, condition, (name, expressionString) = self.isValidAssign(line)
+		condition = ['declare', 'assign', 'ret'][self.tmpstate]
+		name = ['y', 'y', None][self.tmpstate]
+		expressionString = ['1', 'y+1', None][self.tmpstate]
+		self.tmpstate += 1
+		#print('fuck', flag, condition, name, expressionString)
+		if True: #then it is a declare or assign
+			if condition == 'declare': # it is a declare
+				self.declare(name, expressionString, line[:2])
+			elif condition == 'assign': # it is an assign
+				self.assign(name, expressionString)
+ 
+		#if 'for' in line[:len('for')]:
+		#	self.scope += 1
+		#	rest = line[len('for'):]
+		#	type = rest[1:2]
+		#	assignString = rest[4:].split()
+		#	if rest[1] != '$':
+		#		raise Exception('Didn\'t have a type.')
+		#	else:
+		#		name = assignString[0]
+		#		expression = assignString[2][:-1]
+		#		self.assign(name, expressionString)
+		#	print(rest)
+		#elif 'while' == line[:len('while')]:
+		#	None
 
 	def assign(self, name, expression):
-		expressionSplit = expression.split('=')
-		newValue = evalExpression(expressionSplit[1])
-	
-		var = varDict[-1][name]
+		print("expression is", expression)
+		newValue = self.evalExpression(expression)
+		var = self.varDicts[-1][name]
 		var.value = newValue
-		varDict[-1].update({name : var})
+		self.varDicts[-1].update({name : var})
 
-	def declare(self, name, expression):
-		sidesOfExpression = expression.split('=')
-		type = sidesOfExpression[0][0:1]
-		value = evalExpression(sidesOfExpression[1])
+	def declare(self, name, expression, mtype):
+		value = self.evalExpression(expression)
 		scope = self.scope
-		newVar = Variable(type, name, value, scope)
-		varDict[-1].update({name : newVar})
+		newVar = Variable.Variable(mtype, name, value.value, scope)
+		self.varDicts[-1].update({name : newVar})
 
 	def isValidAssign(self, line):
 		hasType = False
+		print("line is: ", line)
 		if line[0] == '$':
 			hasType = True
 		
 		if line[-1] != ';':
-			raise Exception('No semicolon.')
+			pass
+		#	raise Exception('No semicolon.')
 		else:
 			line = line[:-1]
 
 		split = line.split()
 		if hasType and split[2] != '=':
-			raise Exception('Not a valid assign.')
+			pass
+			#raise Exception('Not a valid assign.')
 		
 		if hasType:	
 			if split[0] not in castMap.keys():
-				raise Exception('Not a valid type.')
+				pass
+				#raise Exception('Not a valid type.')
 			expr = split[3:]
 			curStr = ''
 			for exp in expr:
@@ -118,9 +190,6 @@ class Program():
 				curStr += exp
 			return True, 'assign', (split[0], curStr)
 		return False, None, None
-
-
-
 
 	def shortenTypes(self):
 		"""
@@ -216,4 +285,56 @@ class Program():
 				return True, string[len(type) + 1: leftIndex]
 		return False, None
 
+	def evalExpression(self, s):
+		valueStack = []
+		operatorStack = []
+		for x in operators:
+			s = s.replace(x, " "+x+" ")
+		tokens = s.split()
+		y = 0
+		while y < len(tokens):
+			#print y, tokens[y], operatorStack, valueStack
+			token = tokens[y]
+			if stringIsInt(token):
+				valueStack.append(Variable.Variable(None, None, int(token), None)) 
+			elif token in self.varDicts[-1].keys():
+				valueStack.append(self.varDicts[-1][token])
+			elif token == "(":
+				operatorStack.append(token)
+			elif token == ")":
+				x = operatorStack.pop()
+				while x != "(":
+					v1 = valueStack.pop()
+					v2 = valueStack.pop()
+					valueStack.append(applyOperator(x, v1, v2))
+					x = operatorStack.pop()
+			elif token in operators:
+				while len(operatorStack) > 0 and precedence[operatorStack[-1]] >= precedence[token]:
+					x = operatorStack.pop()
+					v1 = valueStack.pop()
+					v2 = valueStack.pop()
+					valueStack.append(applyOperator(x, v1, v2))
+				operatorStack.append(token)
+			elif token in funcNames:
+				paramstring = ""
+				i = 0
+				for z in range(y+1, len(tokens)):
+					y += 1
+					if tokens[z] == "(":
+						i += 1
+					elif tokens[z] == ")":
+						i -= 1
+					paramstring += tokens[z]
+					if i == 0:
+						valueStack.append(getFuncValue(token, evalFunctionParams(paramstring)))
+						break
+			y += 1
+		while len(operatorStack) != 0:
+			x = operatorStack.pop()
+			v1 = valueStack.pop()
+			v2 = valueStack.pop()
+			valueStack.append(applyOperator(x, v1, v2))
+		return valueStack[0]
+
 p = Program('cfile.txt')
+print(p.getFuncValue('main', []))
