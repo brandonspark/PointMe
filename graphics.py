@@ -12,7 +12,11 @@ class Program(object):
                              '2': Variable("2", "$I", None, 1)},
                          3: {"ree": Variable("ree", "$I", 2, 0), "bee": Variable("bee", "$P", 5, 0)},
                          4: {"w": Variable("w", "$B", True, 0), "z": None, "m": Variable("m", "$I", 2, 0)},
-                         5: {"agh": Variable("agh", "$F", -2.34, 0)}}
+                         5: {"agh": Variable("agh", "$F", -2.34, 0), "b": Variable("b", "$P", 2, 0)},
+                         6: {'x': Variable("x", "$I", 40, 1), 'y': Variable("y", "$I", 2, 1)},
+                         7: {'0': Variable("0", "$I", 1, 1), '1': Variable("1", "$P", 8, 1), '2': Variable("2", "$I",
+                                                                                                           None, 1)},
+                         8: {"ree": Variable("ree", "$I", 2, 0), "bee": Variable("bee", "$P", 7, 0)}}
 
 
 class Variable:
@@ -23,6 +27,8 @@ class Variable:
         self.scope = scope  # if variableScope > functionScope, this var should be deleted
         self.x = 0
         self.y = 0
+        self.drawx = 0
+        self.drawy = 0
 
 
 programVariable = Program([{"x": Variable("x", "$I", 46, 0), "y": Variable("y", "$S", "boop", 0),
@@ -38,6 +44,15 @@ def drawButton(canvas, x, y, width, height, color, border=0):
     x2 = x + width/2
     y2 = y + height/2
     canvas.create_rectangle(x1, y1, x2, y2, fill=color, width=border)
+
+
+def drawFakeButton(canvas, x, y, width, height, border=0):
+    x1 = x - width / 2
+    y1 = y - height / 2
+    x2 = x + width / 2
+    y2 = y + height / 2
+    canvas.create_line(x1, y1, x2, y2, width=border)
+    canvas.create_line(x1, y2, x2, y2, width=border)
 
 
 def checkButtonBounds(x0, y0, x, y, width, height):
@@ -72,6 +87,8 @@ def init(data):
     data.program = programVariable
     data.heapDict = {}
     data.drawn = {}
+    data.pointerCoordinates = {}
+    data.lines = []
 
     ### graphics ###
     data.ratio = 1/3
@@ -200,7 +217,7 @@ def redrawAll(canvas, data):
         if variable.type == "$P" and variable.value is not None:
             if variable.value in data.drawn:
                 oldx, oldy = data.drawn[variable.value][0], data.drawn[variable.value][1]
-                canvas.create_line(variable.x, variable.y, oldx, oldy, width=data.pointerWidth, arrow=LAST)
+                data.lines += [[variable.x, variable.y, oldx, oldy]]
                 pointerDrawn = True
             else:
                 nextVariablesDict = data.program.heapDict[variable.value]
@@ -220,7 +237,7 @@ def redrawAll(canvas, data):
                             width = data.variableWidthdx * 2
                         x0 += width/2
                         if not pointerDrawn:
-                            canvas.create_line(x, y, x0-width/2, y0, width=data.pointerWidth, arrow=LAST)
+                            data.lines += [[x, y, x0-width/2, y0]]
                             data.drawn[variable.value] = [x0-width/2, y0]
                             pointerDrawn = True
                         nextVariable.x, nextVariable.y = x0, y0
@@ -236,6 +253,9 @@ def redrawAll(canvas, data):
                             elif nextVariable.value is None:
                                 canvas.create_text(x0, y0, text="?", font=data.textFont, fill=data.bgColor)
                         # no variable names to draw
+                    # else:
+                    #     width = data.variableWidthdx * 2
+                    #     drawFakeButton(canvas, x, y, width, data.variableHeight, border=1)
                     x0 += width/2
                 y0 += data.variableInterval
 
@@ -249,11 +269,10 @@ def redrawAll(canvas, data):
             pointerDrawn = False
             if startVariable is not None and startVariable.type == "$P":
                 x1 = data.ratio * data.width * 2
-                print(startVariable.value, data.drawn)
+                #print(startVariable.value, data.drawn)
                 if startVariable.value in data.drawn:
-                    print("ALREADY DRAWN")
                     oldx, oldy = data.drawn[startVariable.value][0], data.drawn[startVariable.value][1]
-                    canvas.create_line(startVariable.x, startVariable.y, oldx, oldy, width=data.pointerWidth, arrow=LAST)
+                    data.lines += [[startVariable.x, startVariable.y, oldx, oldy]]
                     pointerDrawn = True
                 else:
                     endVariablesDict = data.program.heapDict[startVariable.value]
@@ -272,11 +291,10 @@ def redrawAll(canvas, data):
                                 width = data.variableWidthdx * 2
                             x1 += width / 2
                             if not pointerDrawn:
-                                canvas.create_line(startVariable.x, startVariable.y, x1 - width / 2, y1,
-                                                   width=data.pointerWidth, arrow=LAST)
+                                data.lines += [[startVariable.x, startVariable.y, x1 - width / 2, y1]]
                                 data.drawn[startVariable.value] = [x1 - width / 2, y1]
-                                #print(startVariable.value, data.drawn[startVariable.value], data.drawn)
                                 pointerDrawn = True
+                            endVariable.x, endVariable.y = x1, y1
                             drawButton(canvas, x1, y1, width, data.variableHeight, "seashell3", border=1)
                             # draw value
                             if endVariable.type != "$P" and endVariable.value is not None:
@@ -293,6 +311,60 @@ def redrawAll(canvas, data):
                 y1 += data.variableInterval
         data.nextVariables = newNextVariables
 
+    # draw all the other variables in the heap
+    y = 80
+    for varI in data.program.heapDict:
+        if varI not in data.drawn:
+            x = data.ratio * data.width * 2.5
+            varDict = data.program.heapDict[varI]
+            iter(varDict.items())
+            varList = []
+            for key, value in varDict.items():
+                varList += [value]
+            for var in varList:
+                # draw button
+                if var is not None:
+                    if var.type != "$P" and var.value is not None:
+                        text = str(var.value)
+                        width = data.variableWidthdx * len(text)
+                    else:
+                        width = data.variableWidthdx * 2
+                    x += width / 2
+                    var.x, var.y = x, y
+                    if varI not in data.pointerCoordinates:
+                        data.pointerCoordinates[varI] = [x - width/2, y]
+                        print(varI, data.pointerCoordinates[varI])
+                    drawButton(canvas, x, y, width, data.variableHeight, "seashell3", border=1)
+                    # draw value
+                    if var.type != "$P" and var.value is not None:
+                        canvas.create_text(x, y, text=text, font=data.textFont, fill=data.bgColor)
+                    else:
+                        if var.type == "$P":
+                            if var.value is None:
+                                drawGroundSymbol(data, canvas, x, y, 60)
+                            canvas.create_oval(x - r, y - r, x + r, y + r, fill="black")
+                        elif var.value is None:
+                            canvas.create_text(x, y, text="?", font=data.textFont, fill=data.bgColor)
+                x += width/2
+            y += data.variableInterval
+
+    # draw pointers for the other variables in the heap
+    for var2I in data.program.heapDict:
+        if var2I not in data.drawn:
+            var2Dict = data.program.heapDict[var2I]
+            iter(var2Dict.items())
+            var2List = []
+            for key, value in var2Dict.items():
+                var2List += [value]
+            for var2 in var2List:
+                if var2 is not None and var2.type == "$P":
+                    print(var2I, var2.name)
+                    newx, newy = data.pointerCoordinates[var2.value][0], data.pointerCoordinates[var2.value][1]
+                    data.lines += [[var2.x, var2.y, newx, newy]]
+
+    # draw all the pointers
+    for x1, y1, x2, y2 in data.lines:
+        canvas.create_line(x1, y1, x2, y2, width=data.pointerWidth, arrow=LAST)
 
 ####################################
 # use the run function as-is
@@ -318,17 +390,17 @@ def run(width=300, height=300):
         leftDragged(event, data)
         redrawAllWrapper(canvas, data)
 
-    def timerFiredWrapper(canvas, data):
-        timerFired(data)
-        redrawAllWrapper(canvas, data)
-        # pause, then call timerFired again
-        canvas.after(data.timerDelay, timerFiredWrapper, canvas, data)
+    # def timerFiredWrapper(canvas, data):
+    #     timerFired(data)
+    #     redrawAllWrapper(canvas, data)
+    #     # pause, then call timerFired again
+    #     canvas.after(data.timerDelay, timerFiredWrapper, canvas, data)
     # Set up data and call init
     class Struct(object): pass
     data = Struct()
     data.width = width
     data.height = height
-    data.timerDelay = 100 # milliseconds
+    #data.timerDelay = 100 # milliseconds
     root = Tk()
     root.resizable(width=False, height=False) # prevents resizing window
     init(data)
@@ -342,7 +414,8 @@ def run(width=300, height=300):
     root.bind("<Key>", lambda event:
                             keyPressedWrapper(event, canvas, data))
     root.bind('<B1-Motion>', lambda event: leftDraggedWrapper(event, canvas, data))
-    timerFiredWrapper(canvas, data)
+    #timerFiredWrapper(canvas, data)
+    redrawAllWrapper(canvas, data)
     # and launch the app
     root.mainloop()  # blocks until window is closed
     print("bye!")
