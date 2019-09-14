@@ -1,0 +1,21 @@
+typedef stack_node node;
+struct stack_node
+{
+	int value;
+	node *next;
+}
+
+void incrpt(int *y)
+{
+	*y =  *y + 1;
+	return 0;
+}
+
+int main()
+{
+	int *x = malloc(sizeof(int)*1);
+	*x = 10;
+	int tmp = incrpt(x);
+	pstat;
+	return *x;
+}
