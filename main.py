@@ -285,7 +285,16 @@ class Program():
 				return True, string[len(type) + 1: leftIndex]
 		return False, None
 
+	def evalFunctionParams(self, s):
+		s = s[1:-1] #removes the open and close parentheses around the parameters
+		s = s.split(",")
+		params = []
+		for param in s:
+			params.append(self.evalExpression(param))
+		return params
+
 	def evalExpression(self, s):
+		print("evaling: ", s)
 		valueStack = []
 		operatorStack = []
 		for x in operators:
@@ -315,7 +324,7 @@ class Program():
 					v2 = valueStack.pop()
 					valueStack.append(applyOperator(x, v1, v2))
 				operatorStack.append(token)
-			elif token in funcNames:
+			elif token in self.funcDict.keys():
 				paramstring = ""
 				i = 0
 				for z in range(y+1, len(tokens)):
@@ -326,7 +335,7 @@ class Program():
 						i -= 1
 					paramstring += tokens[z]
 					if i == 0:
-						valueStack.append(getFuncValue(token, evalFunctionParams(paramstring)))
+						valueStack.append(self.getFuncValue(token, self.evalFunctionParams(paramstring)))
 						break
 			y += 1
 		while len(operatorStack) != 0:
