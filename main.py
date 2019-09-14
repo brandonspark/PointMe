@@ -2,6 +2,7 @@ import numpy as np
 #from evalexpression import *
 import Variable
 import string
+import re
 
 functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
