@@ -8,9 +8,9 @@ actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
 typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
 typeMap2 = {'$I': 'int', '$S': 'string', '$B': 'bool', '$F': 'float', '$D': 'double', '$L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
-operators = ["+","-","*","/","(",")","=="]
-precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1}
-
+operators = ["+","-","*","/","(",")","==",'>>']
+spacedOperators = ["+","-","/","(",")","==",'>>']
+precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1,'>>':4 }
 
 def stringIsInt(s):
 	try:
@@ -20,7 +20,8 @@ def stringIsInt(s):
 		return False
 
 def applyOperator(op, v1, v2):
-	return Variable.Variable(None, None, int(eval(str(v2.value)+op+str(v1.value))), None)
+	if op in operators:
+		return Variable.Variable(None, None, int(eval(str(v2.value)+op+str(v1.value))), None)
 
 class Program():
 	def __init__(self, cfile):
@@ -35,10 +36,10 @@ class Program():
 		self.heapDict = {}
 		self.heapNum = 0
 		self.mallocParser('*x', 0, 'malloc(sizeof($I) * 8)', '$I')
-	#	print(self.lines)
-	#	print(self.heapDict)
-	#	print(self.heapNum)
-	#	print("woah")
+		#print(self.lines)
+		#print(self.heapDict)
+		#print(self.heapNum)
+		#print("woah")
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
@@ -54,9 +55,9 @@ class Program():
 		funcCode = self.funcDict[funcName]
 		returnType = funcCode[0].split()[0]
 		numParams = len(funcCode[0].split(','))
-#		print("num params", numParams)
+		#print("num params", numParams)
 		if numParams != 0:
-#			print("declaring params")
+			#print("declaring params")
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
 				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
@@ -97,7 +98,7 @@ class Program():
 			curStr = ''
 			for exp in expr:
 				curStr += exp
-			if split[0] not in self.varDicts[-1].keys():
+			if split[0] not in self.varDicts[-1].keys() and split[0].strip('*') not in self.varDicts[-1].keys():
 				raise Exception('Variable doesn\'t exist')
 			self.assign(split[0], curStr)
 		elif line == '{':
@@ -108,18 +109,22 @@ class Program():
 			return line
 
 	def assign(self, name, expression):
-#		print("expression is", expression)
-		if '*' in name:
+		#print("expression is", expression)
+		if 'malloc' in expression:
 			self.mallocParser(1, name, expression, mtype)
 			return
 		newValue = self.evalExpression(expression)
-#		print("new value: ", newValue)
-		var = self.varDicts[-1][name]
-		var.value = newValue.value
-		self.varDicts[-1].update({name : var})
+		#print("new value: ", newValue)
+		if name[0] == '*' and name[1] != '*': #dereferencing 1x
+			self.heapDict[(self.varDicts[-1][name[1:]]).value][0].value = newValue.value
+		# TODO implement dereferencing 2x or more
+		else:
+			var = self.varDicts[-1][name]
+			var.value = newValue.value
+			self.varDicts[-1].update({name : var})
 
 	def declare(self, name, expression, mtype):
-#		print('!!', name)
+		#print('!!', name)
 		if '*' in name:
 			self.mallocParser(0, name, expression, mtype)
 			return
@@ -129,11 +134,11 @@ class Program():
 		self.varDicts[-1].update({name : newVar})
 
 	def mallocParser(self, flag, name, expression, type):
-#		print("expr", expression)
+		#print("expr", expression)
 		hasDigit = False
 		for char in expression:
 			if char.isdigit():
-#				print("found digit")
+				#print("found digit")
 				hasDigit = True
 				break
 		expression = expression.replace('malloc', '')
@@ -164,13 +169,13 @@ class Program():
 			obj.type = '$P'
 			obj.scope = self.scope
 		else: #declare
-			obj = Variable.Variable(name, '$P', self.heapNum - 1, self.scope)
-			self.varDicts[-1][name] = obj
+			obj = Variable.Variable(str(name).strip('*'), '$P', self.heapNum - 1, self.scope)
+			self.varDicts[-1][str(name).strip('*')] = obj
 		return self.heapNum - 1
 
 	def isValidAssign(self, line):
 		hasType = False
-#		print("line is: ", line)
+		#print("line is: ", line)
 		if line[0] == '$':
 			hasType = True
 		
@@ -199,7 +204,6 @@ class Program():
 			obj = Variable.Variable(name, '$P', self.heapNum - 1, self.scope)
 			self.varDicts[-1][name] = obj
 		return self.heapNum - 1
-
 
 	def shortenTypes(self):
 		"""
@@ -235,7 +239,7 @@ class Program():
 					if scope == 0:
 						break
 			functions[funcName] = goodLines
-#		print(self.lines)
+		#print(self.lines)
 		return functions
 
 	def readText(self, cfile):
@@ -301,26 +305,34 @@ class Program():
 		params = []
 		for param in s:
 			params.append(self.evalExpression(param).value)
-	#	print("params", params)
+		#print("params", params)
 		return params
 
 	def evalExpression(self, s):
-	#	print("evaling: ", s)
+		#print("evaling: ", s)
 		valueStack = []
 		operatorStack = []
-		for x in operators:
+		for x in spacedOperators:
 			s = s.replace(x, " "+x+" ")
 		tokens = s.split()
-	#	print('tokens: ', tokens)
+		#print('tokens: ', tokens)
 		print('varDicts', self.varDicts[-1])
 		y = 0
 		while y < len(tokens):
 			#print y, tokens[y], operatorStack, valueStack
 			token = tokens[y]
 			if stringIsInt(token):
-				valueStack.append(Variable.Variable(None, None, int(token), None)) 
+				valueStack.append(Variable.Variable(None, None, int(token), None))
+			#if token in ['true', 'false']:
+			#	valueStack.append(Variable.Variable(None, '$B', token=='true', None)) 
 			elif token in self.varDicts[-1].keys():
 				valueStack.append(self.varDicts[-1][token])
+			elif token[1:] in self.varDicts[-1].keys() and token[0] == "*" and token[1] != '*': #dereferencing
+				print("deref!")
+				valueStack.append(self.heapDict[(self.varDicts[-1][token[1:]]).value][0])
+			elif token.strip('*') in self.varDicts[-1].keys() and token[0] == "*": #dereferencing more than once
+				print("deref! multiple!")
+				valueStack.append(self.heapDict[self.evalExpression(token[1:]).value][0])
 			elif token == "(":
 				operatorStack.append(token)
 			elif token == ")":
@@ -356,8 +368,8 @@ class Program():
 			v1 = valueStack.pop()
 			v2 = valueStack.pop()
 			valueStack.append(applyOperator(x, v1, v2))
-	#	print("returning", valueStack[0])
+		print("returning", valueStack[0])
 		return valueStack[0]
 
 p = Program('cfile.txt')
-print(p.getFuncValue('main', []))
+print(p.getFuncValue('main', []).value)

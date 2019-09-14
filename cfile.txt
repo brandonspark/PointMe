@@ -1,13 +1,11 @@
-int dub(int x) {
-	return x*2;
+int derefp1(int* x)
+{
+	return *x + 1;
 }
 
-int half(int x) {
-	return x/2;
-}
-
-int main() {
-	int x = 10;
-	int y = 3;
-	return (half(dub(x)));
+int main() 
+{
+	int *y = malloc(sizeof(int));
+	*y = 3;
+	return derefp1(y);
 }
