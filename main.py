@@ -125,7 +125,9 @@ class Program():
 		newValue = self.evalExpression(expression)
 		#print("new value: ", newValue)
 		if name[0] == '*' and name[1] != '*': #dereferencing 1x
-			self.heapDict[(self.varDicts[-1][name[1:]]).value][0].value = newValue.value
+			print(name)
+			self.heapDict[(self.varDicts[-1][name[1:]]).value][0] = Variable.Variable(None, None, newValue.value, None)
+#			self.heapDict[(self.varDicts[-1][name[1:]]).value][0].value = newValue.value
 		# TODO implement dereferencing 2x or more
 		else:
 			var = self.varDicts[-1][name]
