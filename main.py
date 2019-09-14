@@ -35,10 +35,10 @@ class Program():
 		self.heapDict = {}
 		self.heapNum = 0
 		self.mallocParser('*x', 0, 'malloc(sizeof($I) * 8)', '$I')
-		print(self.lines)
-		print(self.heapDict)
-		print(self.heapNum)
-		print("woah")
+	#	print(self.lines)
+	#	print(self.heapDict)
+	#	print(self.heapNum)
+	#	print("woah")
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
@@ -108,7 +108,7 @@ class Program():
 			return line
 
 	def assign(self, name, expression):
-		print("expression is", expression)
+#		print("expression is", expression)
 		if '*' in name:
 			self.mallocParser(1, name, expression, mtype)
 			return
@@ -119,7 +119,7 @@ class Program():
 		self.varDicts[-1].update({name : var})
 
 	def declare(self, name, expression, mtype):
-		print('!!', name)
+#		print('!!', name)
 		if '*' in name:
 			self.mallocParser(0, name, expression, mtype)
 			return
@@ -129,11 +129,11 @@ class Program():
 		self.varDicts[-1].update({name : newVar})
 
 	def mallocParser(self, flag, name, expression, type):
-		print("expr", expression)
+#		print("expr", expression)
 		hasDigit = False
 		for char in expression:
 			if char.isdigit():
-				print("found digit")
+#				print("found digit")
 				hasDigit = True
 				break
 		expression = expression.replace('malloc', '')
@@ -145,6 +145,29 @@ class Program():
 		if not hasDigit: #not found digit
 			size = 1
 			type = expression[0]
+		else:
+			if expression[0].isdigit():
+				type = expression[1]
+				if '*' in type:
+					type = '$P'
+				size = expression[0]
+			elif expression[1].isdigit():
+				type = expression[0]
+				if '*' in type:
+					type = '$P'
+				size = expression[1]
+		self.heapDict[self.heapNum] = [Variable.Variable('-', type, None, self.scope) for i in range(int(size))]
+		self.heapNum += 1
+		if flag == 1: #assign
+			obj = self.varDicts[-1][name]
+			obj.value = self.heapNum - 1
+			obj.type = '$P'
+			obj.scope = self.scope
+		else: #declare
+			obj = Variable.Variable(name, '$P', self.heapNum - 1, self.scope)
+			self.varDicts[-1][name] = obj
+		return self.heapNum - 1
+
 	def isValidAssign(self, line):
 		hasType = False
 #		print("line is: ", line)
@@ -289,6 +312,7 @@ class Program():
 			s = s.replace(x, " "+x+" ")
 		tokens = s.split()
 	#	print('tokens: ', tokens)
+		print('varDicts', self.varDicts[-1])
 		y = 0
 		while y < len(tokens):
 			#print y, tokens[y], operatorStack, valueStack
@@ -336,3 +360,4 @@ class Program():
 		return valueStack[0]
 
 p = Program('cfile.txt')
+print(p.getFuncValue('main', []))
