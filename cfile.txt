@@ -1,3 +1,9 @@
+typedef struct myStruct s_t;
+struct myStruct 
+{
+	int x;	
+};
+
 int derefp1(int* x)
 {
 	return *x + 1;
@@ -5,7 +11,10 @@ int derefp1(int* x)
 
 int main() 
 {
-	int a = 2;
-	int b = 1;
-	return a == (b + 1);
+	int *x = malloc(sizeof(int)*3);
+	x[0] = 10;
+	*x = 30;
+	x[1] = 20;
+	x[2] = 40;
+	return x[0] + x[1] + x[2];
 }
