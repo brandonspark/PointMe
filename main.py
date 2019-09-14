@@ -29,17 +29,20 @@ class Program():
 		Initializes all the program data.
 		"""
 		self.lines = self.splitLines(self.cleanText(self.readText(cfile)))
+		print(self.lines)
 		self.shortenTypes()
 		self.funcDict = self.getFunctions()
 		self.varDicts = [{"nope":"hi"}]
+		self.structDict = self.getStructs()
 		self.scope = 0
 		self.heapDict = {}
 		self.heapNum = 0
-		self.mallocParser('*x', 0, 'malloc(sizeof($I) * 8)', '$I')
-		#print(self.lines)
-		#print(self.heapDict)
-		#print(self.heapNum)
-		#print("woah")
+
+		self.mallocParser(0, '*x', 	'malloc(sizeof(myStruct))', '$I')
+		print(self.lines)
+		print(self.heapDict)
+		print(self.heapNum)
+		print("woah")
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
@@ -106,7 +109,13 @@ class Program():
 			return line
 		elif line == '}':
 			self.scope -= 1
+			self.scopeClear()
 			return line
+
+	def scopeClear(self):
+		for var in varDicts[-1].keys():
+			if self.scope < var.scope:
+				varDicts[-1].pop(var)
 
 	def assign(self, name, expression):
 		#print("expression is", expression)
@@ -147,9 +156,14 @@ class Program():
 		expression = expression.replace('sizeof', '')
 		expression = expression.replace(' ', '')
 		expression = expression.split('*')
+		struct = {}
 		if not hasDigit: #not found digit
 			size = 1
 			type = expression[0]
+			if type in self.structDict.keys():
+				size = len(self.structDict[type])
+				for fieldName in self.structDict[type].keys():
+					struct[fieldName] = Variable.Variable('-', self.structDict[type][fieldName], None, self.scope)
 		else:
 			if expression[0].isdigit():
 				type = expression[1]
@@ -161,10 +175,12 @@ class Program():
 				if '*' in type:
 					type = '$P'
 				size = expression[1]
-		self.heapDict[self.heapNum] = [Variable.Variable('-', type, None, self.scope) for i in range(int(size))]
+			for i in range(int(size)):
+				struct[str(i)] = Variable.Variable('-', type, None, self.scope) 
+		self.heapDict[self.heapNum] = struct
 		self.heapNum += 1
 		if flag == 1: #assign
-			obj = self.varDicts[-1][name]
+			obj = self.varDicts[-1][name.strip('*')]
 			obj.value = self.heapNum - 1
 			obj.type = '$P'
 			obj.scope = self.scope
@@ -202,7 +218,7 @@ class Program():
 			obj.scope = self.scope
 		else: #declare
 			obj = Variable.Variable(name, '$P', self.heapNum - 1, self.scope)
-			self.varDicts[-1][name] = obj
+			self.varDicts[-1][name.strip('*')] = obj
 		return self.heapNum - 1
 
 	def shortenTypes(self):
@@ -241,6 +257,35 @@ class Program():
 			functions[funcName] = goodLines
 		#print(self.lines)
 		return functions
+
+	def getStructs(self):
+		"""
+		This function will go to all the line numbers of all the functions in the program, and store only the lines
+		pertaining to that function in a list. It will then map the function's name to the list of the function's lines.
+		"""
+
+		structs = {}
+		print("here", self.lines)
+		for i, line in enumerate(self.lines): #gets all the struct lines
+			if line[:len('struct')] == 'struct':
+				split = line.split()
+				structName = split[1]
+				count = 0
+				fields = {}
+				for line in self.lines[i + 1:]:
+					if line == '{':
+						count += 1
+					elif line == '}':
+						count -= 1
+						if count == 0:
+							break
+					if line[0] == '$':
+						line = line[:-1]
+						fieldName = line.split()[1]
+						type = line.split()[0]
+						fields[fieldName] = type
+				structs[structName] = fields
+		return structs
 
 	def readText(self, cfile):
 		"""
@@ -286,6 +331,8 @@ class Program():
 				currentStr = ''
 			else:
 				currentStr += char
+		progLines = [x.strip() for x in progLines]
+		progLines = [x for x in progLines if x != '']
 		return progLines
 
 	def isFunctionHeader(self, string):
