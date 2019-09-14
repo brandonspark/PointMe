@@ -102,7 +102,7 @@ class Program():
 			self.scope -= 1
 			# TODO: get rid of any vars with scope greater than self.scope
 			# and check if any loops in loopStack have scope equal to self.scope
-		elif 
+		
 
 	def assign(self, name, expression):
 		print(expression)
