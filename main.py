@@ -1,6 +1,7 @@
 import numpy as np
 #from evalexpression import *
 import Variable
+import string
 
 functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
@@ -19,9 +20,8 @@ def stringIsInt(s):
 		return False
 
 def applyOperator(op, v1, v2):
-	print("v1 and v2 are: ", v1.value, v2.value)
-	if op in operators:
-		return v2.value+v1.value
+	print("v1 and v2 are: ", v1.value, v2.value, type(v1.value), type(v2.value))
+	return Variable.Variable(None, None, (v2.value)+(v1.value), None)
 
 class Program():
 	def __init__(self, cfile):
@@ -55,23 +55,17 @@ class Program():
 		funcCode = self.funcDict[funcName]
 		returnType = funcCode[0].split()[0]
 		numParams = len(funcCode[0].split(','))
-		if numParams != 1:
-			assert(numParams == len(params))
+#		print("num params", numParams)
+		if numParams != 0:
+#			print("declaring params")
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
-				declare(paramStrings[i] + " = " + str(params[i]) + ';')
+				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
 		for line in funcCode:
-			try:
-				self.readLine(line)
-				if 'return' in line:
-					self.ret(line)
-			except ValueError as err:
-				print("returning", str(err))
-				return err
-	
-	def ret(self, line):
-		rest = line.replace('return', '')[:-1]
-		raise ValueError((self.evalExpression(rest)).value)
+			self.readLine(line)
+			if 'return' in line:
+				rest = line.replace('return', '')[:-1]
+				return Variable.Variable(None, None, self.evalExpression(rest).value, None)
 
 	def readLine(self, line):
 		if line[0] == '$' and line[-1] == ';': #its a declare
@@ -89,20 +83,9 @@ class Program():
 		elif line[0] == '$' and line[-1] == ')': #its a function!
 			#do some function magic here
 			None
-		elif 'for' in line[:len('for')]:
-			self.scope += 1
-			rest = line[len('for'):]
-			type = rest[1:2]
-			assignString = rest[4:].split()
-			if rest[1] != '$':
-				raise Exception('Didn\'t have a type.')
-			else:
-				name = assignString[0]
-				expression = assignString[2][:-1]
-				self.assign(name, expressionString)
-			print(rest)
-		elif 'while' == line[:len('while')]:
-			None
+
+		elif 'for' in line or 'while' in line:
+			self.loop(line)
 		elif '=' in line: #tentatively, this is a assign
 			if line[-1] != ';':
 					raise Exception('No semicolon.')
@@ -131,8 +114,9 @@ class Program():
 			self.mallocParser(1, name, expression, mtype)
 			return
 		newValue = self.evalExpression(expression)
+		print("new value: ", newValue)
 		var = self.varDicts[-1][name]
-		var.value = newValue
+		var.value = newValue.value
 		self.varDicts[-1].update({name : var})
 
 	def declare(self, name, expression, mtype):
@@ -285,16 +269,18 @@ class Program():
 		s = s.split(",")
 		params = []
 		for param in s:
-			params.append(self.evalExpression(param))
+			params.append(self.evalExpression(param).value)
+	#	print("params", params)
 		return params
 
 	def evalExpression(self, s):
-		print("evaling: ", s)
+	#	print("evaling: ", s)
 		valueStack = []
 		operatorStack = []
 		for x in operators:
 			s = s.replace(x, " "+x+" ")
 		tokens = s.split()
+	#	print('tokens: ', tokens)
 		y = 0
 		while y < len(tokens):
 			#print y, tokens[y], operatorStack, valueStack
@@ -338,6 +324,7 @@ class Program():
 			v1 = valueStack.pop()
 			v2 = valueStack.pop()
 			valueStack.append(applyOperator(x, v1, v2))
+	#	print("returning", valueStack[0])
 		return valueStack[0]
 
 p = Program('cfile.txt')
