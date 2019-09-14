@@ -11,17 +11,10 @@ typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('d
 typeMap2 = {'$I': 'int', '$S': 'string', '$B': 'bool', '$F': 'float', '$D': 'double', '$L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
 
-<<<<<<< HEAD
-operators = ["+","-","*","/","(",")","==",'>>','<<','<']
-opReturns = {'+': '$I', '-': '$I', '*': '$I', '/': '$I', '==': '$B', '>>': '$I', '<<': '$I','<':'$B'}
-spacedOperators = ["+","-","/","(",")","==",'>>','<<','<']
-precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1,'>>':4,'<<':4,'<':1 }
-=======
 operators = ["+","-","*","/","(",")","==",'>>','<<','<', '>','>=','<=','!=']
 opReturns = {'+': '$I', '-': '$I', '*': '$I', '/': '$I', '==': '$B', '>>': '$I', '<<': '$I','<':'$B','>':'$B','>=':'$B','<=':'$B','!=':'$B'}
 spacedThings = ["+","/","(",")","==",'>>','<<','>=','<=','!=','[',']','->']
 precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1,'>>':4,'<<':4,'<':1,'>':1,'>=':1,'<=':1,'!=':2}
->>>>>>> bf1940fc26931c4b72d9ce36a65dca33d6bc0ddf
 
 def stringIsInt(s):
 	try:
@@ -53,7 +46,6 @@ class Program():
 		self.lines = self.splitLines(self.cleanText(self.readText(cfile)))
 		print(self.lines)
 		self.shortenTypes()
-		self.funcDict = self.getFunctions()
 		self.loopPositions = self.getLoopPositions() # key: line number of start of loop, value: line number of end of loop
 		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains for loops we are currently inside
@@ -65,6 +57,8 @@ class Program():
 			for i, line in enumerate(self.lines):
 				line = line.replace(type, '$' + type)
 				self.lines[i] = line
+			functionTypes.append('$' + type)
+		self.funcDict = self.getFunctions()
 		print('after replace', self.structDict)
 		self.loopPositions = self.getLoopPositions() # key: line number of start of loop, value: line number of end of loop
 		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
@@ -90,25 +84,14 @@ class Program():
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
-<<<<<<< HEAD
 		self.execute()
 		print('var', self.varDicts[-1])
 		print('heap', self.heapDict)
+		print('func', self.funcDict)
 	def findMain(self):
 		for i, line in enumerate(self.lines):
 			if 'main' in line:
 				return i
-=======
-
-	def getLoops(self):
-		return {"hi":"hi"}
-
-#		self.execute()
-#	def findMain(self):
-#		for i, line in enumerate(self.lines):
-#			if 'main' in line:
-#				return i
->>>>>>> bf1940fc26931c4b72d9ce36a65dca33d6bc0ddf
 
 	def execute(self):
 		return 	 	
@@ -180,11 +163,6 @@ class Program():
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
 				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
-<<<<<<< HEAD
-		index = 0
-		while index < len(funcCode):
-			line = funcCode[index]
-=======
 		braceLevel = 0
 		loopBraceLevels = {}
 		for y in range(0, len(funcCode)):
@@ -194,9 +172,9 @@ class Program():
 			if '}' in line:
 				braceLevel -= 1
 #				if braceLevel in loopBraceLevels.keys()
->>>>>>> bf1940fc26931c4b72d9ce36a65dca33d6bc0ddf
 			if 'return' in line:
 				rest = line.replace('return', '')[:-1]
+				print("rest", rest, self.varDicts)
 				return self.evalExpression(rest)
 			elif 'while' in line:
 				loopGuard = self.evalExpression(line[6:])
@@ -228,21 +206,9 @@ class Program():
 				curStr += exp
 			print('declare this', split[1], curStr, split[0])
 			self.declare(split[1], curStr, split[0])
-		elif 'return' in line:
-			None
 		elif line[0] == '$' and line[-1] == ')': #its a function!
 			#do some function magic here
 			None
-#		elif 'while' in line:
-#			if (loop guard false):
-#
-#			self.loop(line)
-		#elif '=' in line: #tentatively, this is a assign
-		#	if line[-1] != ';':
-		#			raise Exception('No semicolon.')
-		#	else:
-		#		line = line[:-1]
-		#	split = shlex.split(line)
 		elif '=' in line and line[-1] == ';': #tentatively, this is a assign
 			line = line[:-1]
 			split = line.split()
@@ -255,13 +221,7 @@ class Program():
 			for exp in expr:
 				curStr += exp
 			if split[0] not in self.varDicts[-1].keys() and split[0].strip('*') not in self.varDicts[-1].keys():
-<<<<<<< HEAD
-				raise Exception('Variable doesn\'t exist')
-			#print('assigning this', split[0], curStr)
-=======
 				pass
-				#raise Exception('Variable doesn\'t exist')
->>>>>>> bf1940fc26931c4b72d9ce36a65dca33d6bc0ddf
 			self.assign(split[0], curStr)
 		elif line == '{':
 			self.scope += 1
@@ -293,20 +253,19 @@ class Program():
 			self.evalExpression(name).value = self.evalExpression(expression).value
 			print("assigned to: ", self.heapDict)
 		else:
-			var = self.varDicts[-1][name]
+			var = self.varDicts[-1][name.strip('*')]
 			var.value = newValue.value
-			self.varDicts[-1].update({name : var})
+			self.varDicts[-1].update({name.strip('*') : var})
 
 	def declare(self, name, expression, mtype):
 		#print('!!', name)
-		print('declore', name, expression, mtype)
 		if 'malloc' in expression:
 			self.mallocParser(0, name, expression, mtype)
 			return
 		value = self.evalExpression(expression)
 		scope = self.scope
-		newVar = Variable.Variable(name, mtype, value.value, scope)
-		self.varDicts[-1].update({name : newVar})
+		newVar = Variable.Variable(name.strip('*'), mtype, value.value, scope)
+		self.varDicts[-1].update({name.strip('*') : newVar})
 
 	def loop(self, cond):
 		"""
@@ -329,16 +288,13 @@ class Program():
 		expression = expression.replace(' ', '')
 		expression = expression.split('*')
 		struct = {}
-		print('heres my expression', name, expression[0], self.structDict)
 		if not hasDigit: #not found digit
-			print('no digit')
 			size = 1
 			type = expression[0]
 			if type in self.structDict.keys():
 				size = len(self.structDict[type])
 				for fieldName in self.structDict[type].keys():
 					struct[fieldName] = Variable.Variable('-', self.structDict[type][fieldName], None, self.scope)
-			print('mystruct', struct, self.structDict)
 		else:
 			if expression[0].isdigit():
 				type = expression[1]
@@ -353,7 +309,6 @@ class Program():
 			for i in range(int(size)):
 				struct[str(i)] = Variable.Variable('-', type, None, self.scope) 
 		self.heapDict[self.heapNum] = struct
-		print('done', self.heapDict, struct)
 		self.heapNum += 1
 		if flag == 1: #assign
 			obj = self.varDicts[-1][name.strip('*')]
@@ -364,8 +319,6 @@ class Program():
 			print('name', name)
 			obj = Variable.Variable(str(name).strip('*'), '$P', self.heapNum - 1, self.scope)
 			self.varDicts[-1][str(name).strip('*')] = obj
-		print('done with malloc', self.heapDict)
-		print(name, expression, type)
 		return self.heapNum - 1
 
 	def isValidAssign(self, line):
@@ -420,8 +373,10 @@ class Program():
 		functions = {}
 		for i, line in enumerate(self.lines): #gets all the function lines
 			flag, header = self.isFunctionHeader(line)
+			print(line, flag)
 			if flag:
-				functions[header] = i
+				functions[header.strip('*')] = i
+			print(functions)
 		for funcName in functions.keys():
 			scope = 0
 			goodLines = []
@@ -450,7 +405,6 @@ class Program():
 		pair = []
 		stack = []
 		for i, line in enumerate(self.lines):
-			print(pair)
 			if "if" in line and "else" not in line:
 				if inConditionalBlock: #we were in the middle of another if
 					stack.append((currentBlock, pair))
@@ -461,7 +415,6 @@ class Program():
 					inConditionalBlock = True
 					pair.append(i)
 			elif "else if" in line and inConditionalBlock:
-				print('found and appended')
 				pair.append(i)
 			elif "else" in line and "if" not in line and inConditionalBlock:
 				inLastBlock = True
@@ -489,7 +442,6 @@ class Program():
 					pair = []
 					conditionals.append(currentBlock)
 					currentBlock = {}
-		print(conditionals)
 
 		return conditionals
 
@@ -527,12 +479,10 @@ class Program():
 		for i, line in enumerate(self.lines): #gets all the struct lines
 			if line[:len('struct')] == 'struct' and line[-1] != ';':
 				split = line.split()
-				print('s', split)
 				structName = split[1]
 				count = 0
 				fields = {}
 				for line in self.lines[i + 1:]:
-					print(line)
 					if line == '{':
 						count += 1
 					elif line == '}':
@@ -610,9 +560,9 @@ class Program():
 		"""
 		Returns true and the name of the function if a string is a function header.
 		"""
-
+		print('funtypes', functionTypes)
 		for type in functionTypes:
-			if type == string[:len(type)] and string[-1] == ')':
+			if string[:len(type)] == type and string[-1] == ')':
 				leftIndex = string.find('(')
 				return True, string[len(type) + 1: leftIndex]
 		return False, None
@@ -637,7 +587,7 @@ class Program():
 		#print('varDicts', self.varDicts[-1])
 		y = 0
 		while y < len(tokens):
-			#print(y, tokens[y], operatorStack, valueStack)
+			print(y, tokens[y], operatorStack, valueStack, self.varDicts[-1])
 			token = tokens[y]
 			#print(token)
 			if stringIsInt(token):
@@ -709,5 +659,5 @@ class Program():
 		#print("returning", valueStack[0])
 		return valueStack[0]
 
-p = Program('cfile2.txt')
+p = Program('cfile.txt')
 print(p.getFuncValue('main', []).value)
