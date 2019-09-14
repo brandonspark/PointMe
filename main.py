@@ -5,7 +5,7 @@ import Variable
 functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
 typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
-typeMap2 = {'I': 'int', 'S': 'string', 'B': 'bool', 'F': 'float', 'D': 'double', 'L': 'long'}
+typeMap2 = {'$I': 'int', '$S': 'string', '$B': 'bool', '$F': 'float', '$D': 'double', '$L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
 operators = ["+","-","*","/","(",")","=="]
 precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1}
@@ -33,14 +33,19 @@ class Program():
 		self.funcDict = self.getFunctions()
 		self.varDicts = [{"nope":"hi"}]
 		self.scope = 0
-		self.tmpstate = 0
-
+		self.heapDict = {}
+		self.heapNum = 0
+		self.mallocParser('*x', 0, 'malloc(sizeof($I) * 8)', '$I')
+		print(self.lines)
+		print(self.heapDict)
+		print(self.heapNum)
+		print("woah")
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
 
 	def execute(self):
-		index = i
+		index = 0
 		while(i < len(self.lines)):
 			self.readLine(self.lines[i])
 			i += 1
@@ -113,83 +118,73 @@ class Program():
 			if split[0] not in self.varDicts[-1].keys():
 				raise Exception('Variable doesn\'t exist')
 			self.assign(split[0], curStr)
-		elif line == '{' or line == '}':
-			None
-
-	def readLine2(self, line):
-		#flag, condition, (name, expressionString) = self.isValidAssign(line)
-		condition = ['declare', 'assign', 'ret'][self.tmpstate]
-		name = ['y', 'y', None][self.tmpstate]
-		expressionString = ['1', 'y+1', None][self.tmpstate]
-		self.tmpstate += 1
-		#print('fuck', flag, condition, name, expressionString)
-		if True: #then it is a declare or assign
-			if condition == 'declare': # it is a declare
-				self.declare(name, expressionString, line[:2])
-			elif condition == 'assign': # it is an assign
-				self.assign(name, expressionString)
- 
-		#if 'for' in line[:len('for')]:
-		#	self.scope += 1
-		#	rest = line[len('for'):]
-		#	type = rest[1:2]
-		#	assignString = rest[4:].split()
-		#	if rest[1] != '$':
-		#		raise Exception('Didn\'t have a type.')
-		#	else:
-		#		name = assignString[0]
-		#		expression = assignString[2][:-1]
-		#		self.assign(name, expressionString)
-		#	print(rest)
-		#elif 'while' == line[:len('while')]:
-		#	None
+		elif line == '{':
+			self.scope += 1
+			return line
+		elif line == '}':
+			self.scope -= 1
+			return line
 
 	def assign(self, name, expression):
 		print("expression is", expression)
+		if '*' in name:
+			self.mallocParser(1, name, expression, mtype)
+			return
 		newValue = self.evalExpression(expression)
 		var = self.varDicts[-1][name]
 		var.value = newValue
 		self.varDicts[-1].update({name : var})
 
 	def declare(self, name, expression, mtype):
+		print('!!', name)
+		if '*' in name:
+			self.mallocParser(0, name, expression, mtype)
+			return
 		value = self.evalExpression(expression)
 		scope = self.scope
 		newVar = Variable.Variable(mtype, name, value.value, scope)
 		self.varDicts[-1].update({name : newVar})
 
-	def isValidAssign(self, line):
-		hasType = False
-		print("line is: ", line)
-		if line[0] == '$':
-			hasType = True
-		
-		if line[-1] != ';':
-			pass
-		#	raise Exception('No semicolon.')
+	def mallocParser(self, flag, name, expression, type):
+		print("expr", expression)
+		hasDigit = False
+		for char in expression:
+			if char.isdigit():
+				print("found digit")
+				hasDigit = True
+				break
+		expression = expression.replace('malloc', '')
+		expression = expression.replace('(', '')
+		expression = expression.replace(')', '')
+		expression = expression.replace('sizeof', '')
+		expression = expression.replace(' ', '')
+		expression = expression.split('*')
+		if not hasDigit: #not found digit
+			size = 1
+			type = expression[0]
 		else:
-			line = line[:-1]
+			if expression[0].isdigit():
+				type = expression[1]
+				if '*' in type:
+					type = '$P'
+				size = expression[0]
+			elif expression[1].isdigit():
+				type = expression[0]
+				if '*' in type:
+					type = '$P'
+				size = expression[1]
+		self.heapDict[self.heapNum] = [Variable.Variable('-', type, None, self.scope) for i in range(int(size))]
+		self.heapNum += 1
+		if flag == 1: #assign
+			obj = self.varDicts[-1][name]
+			obj.value = self.heapNum - 1
+			obj.type = '$P'
+			obj.scope = self.scope
+		else: #declare
+			obj = Variable.Variable(name, '$P', self.heapNum - 1, self.scope)
+			self.varDicts[-1][name] = obj
+		return self.heapNum - 1
 
-		split = line.split()
-		if hasType and split[2] != '=':
-			pass
-			#raise Exception('Not a valid assign.')
-		
-		if hasType:	
-			if split[0] not in castMap.keys():
-				pass
-				#raise Exception('Not a valid type.')
-			expr = split[3:]
-			curStr = ''
-			for exp in expr:
-				curStr += exp
-			return True, 'declare', (split[1], curStr)
-		else:
-			expr = split[2:]
-			curStr = ''
-			for exp in expr:
-				curStr += exp
-			return True, 'assign', (split[0], curStr)
-		return False, None, None
 
 	def shortenTypes(self):
 		"""
@@ -346,4 +341,3 @@ class Program():
 		return valueStack[0]
 
 p = Program('cfile.txt')
-print(p.getFuncValue('main', []))
