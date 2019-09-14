@@ -2,6 +2,7 @@ import numpy as np
 #from evalexpression import *
 import Variable
 import string
+import re
 
 functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
@@ -38,6 +39,13 @@ class Program():
 			for i, line in enumerate(self.lines):
 				line = line.replace(type, '$' + type)
 				self.lines[i] = line
+<<<<<<< HEAD
+=======
+		self.loopPositions = self.getLoops() # key: line number of start of loop, value: line number of end of loop
+		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
+		self.loopList = [] # stores tuple (line, scope) that contains for loops we are currently inside
+		self.funcDict = self.getFunctions()
+>>>>>>> 40caf27b0f1146d222e3df3557739fafc4449c7d
 		self.loopPositions = self.getLoopPositions() # key: line number of start of loop, value: line number of end of loop
 		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains "for" loops we are currently inside
