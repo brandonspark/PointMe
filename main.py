@@ -9,10 +9,17 @@ actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
 typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
 typeMap2 = {'$I': 'int', '$S': 'string', '$B': 'bool', '$F': 'float', '$D': 'double', '$L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
+<<<<<<< HEAD
 operators = ["+","-","*","/","(",")","==",'>>','<<','<']
 opReturns = {'+': '$I', '-': '$I', '*': '$I', '/': '$I', '==': '$B', '>>': '$I', '<<': '$I','<':'$B'}
 spacedOperators = ["+","-","/","(",")","==",'>>','<<','<']
 precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1,'>>':4,'<<':4,'<':1 }
+=======
+operators = ["+","-","*","/","(",")","==",'>>','<<']
+opReturns = {'+': '$I', '-': '$I', '*': '$I', '/': '$I', '==': '$B', '>>': '$I', '<<': '$I'}
+spacedOperators = ["+","-","/","(",")","==",'>>','<<']
+precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1,'>>':4,'<<':4 }
+>>>>>>> f10b2cc39f36777409484e235f9a7bd9e5d58e47
 
 def stringIsInt(s):
 	try:
@@ -23,7 +30,8 @@ def stringIsInt(s):
 
 def applyOperator(op, v1, v2):
 	if op in operators:
-		return Variable.Variable(None, None, int(eval(str(v2.value)+op+str(v1.value))), None)
+		print("types: ", (v1.type), v2.type)
+		return Variable.Variable(None, opReturns[op], castMap[v1.type](eval(str(v2.value)+op+str(v1.value))), None)
 
 def concat(l):
 	newStr = ''
@@ -39,6 +47,11 @@ class Program():
 		self.lines = self.splitLines(self.cleanText(self.readText(cfile)))
 		print(self.lines)
 		self.shortenTypes()
+		self.funcDict = self.getFunctions()
+		self.loopPositions = self.getLoops() # key: line number of start of loop, value: line number of end of loop
+		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
+		self.loopList = [] # stores tuple (line, scope) that contains for loops we are currently inside
+		self.varDicts = [{"nope":"hi"}]
 		self.structDict = self.getStructs()
 		self.typedefSearch()
 		for type in self.structDict.keys():
@@ -149,10 +162,10 @@ class Program():
 			for i in range(0, len(params)):
 				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
 		for line in funcCode:
-			self.readLine(line)
 			if 'return' in line:
 				rest = line.replace('return', '')[:-1]
-				return Variable.Variable(None, None, self.evalExpression(rest).value, None)
+				return self.evalExpression(rest)
+			self.readLine(line)
 
 	def readLine(self, line):
 		if line[0] == '$' and line[-1] == ';': #its a declare
@@ -174,6 +187,8 @@ class Program():
 			line = line[:-1]
 			split = line.split()
 			if split[1] != '=':
+				print("split:", split)
+				#pass
 				raise Exception('Not a valid assign.')
 			expr = split[2:]
 			curStr = ''
@@ -206,7 +221,6 @@ class Program():
 		#print("new value: ", newValue)
 		if name[0] == '*' and name[1] != '*': #dereferencing 1x
 			self.heapDict[(self.varDicts[-1][name[1:]]).value][0] = Variable.Variable(None, None, newValue.value, None)
-#			self.heapDict[(self.varDicts[-1][name[1:]]).value][0].value = newValue.value
 		# TODO implement dereferencing 2x or more
 		else:
 			var = self.varDicts[-1][name]
@@ -220,7 +234,7 @@ class Program():
 			return
 		value = self.evalExpression(expression)
 		scope = self.scope
-		newVar = Variable.Variable(mtype, name, value.value, scope)
+		newVar = Variable.Variable(name, mtype, value.value, scope)
 		self.varDicts[-1].update({name : newVar})
 
 	def loop(self, cond):
@@ -542,12 +556,12 @@ class Program():
 		#print('varDicts', self.varDicts[-1])
 		y = 0
 		while y < len(tokens):
-			#print y, tokens[y], operatorStack, valueStack
+			#print(y, tokens[y], operatorStack, valueStack)
 			token = tokens[y]
 			if stringIsInt(token):
-				valueStack.append(Variable.Variable(None, None, int(token), None))
-			#if token in ['true', 'false']:
-			#	valueStack.append(Variable.Variable(None, '$B', token=='true', None)) 
+				valueStack.append(Variable.Variable(None, '$I', int(token), None))
+			if token in ['true', 'false']:
+				valueStack.append(Variable.Variable(None, '$B', token=='true', None)) 
 			elif token in self.varDicts[-1].keys():
 				valueStack.append(self.varDicts[-1][token])
 			elif token[1:] in self.varDicts[-1].keys() and token[0] == "*" and token[1] != '*': #dereferencing
