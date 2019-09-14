@@ -31,6 +31,9 @@ class Program():
 		self.lines = self.splitLines(self.cleanText(self.readText(cfile)))
 		self.shortenTypes()
 		self.funcDict = self.getFunctions()
+		self.loopPositions = self.getLoops() # key: line number of start of loop, value: line number of end of loop
+		self.loopPositionsReverse = {v: k for k, v in loopPositions.items()} # key, value switched from loopPositions
+		self.loopList = [] # stores tuple (line, scope) that contains for loops we are currently inside
 		self.varDicts = [{"nope":"hi"}]
 		self.scope = 0
 		self.tmpstate = 0
@@ -42,6 +45,18 @@ class Program():
 	def execute(self):
 		index = i
 		while(i < len(self.lines)):
+			# we have encountered start of a loop, evaluate loop and react accordingly
+			if i in [location[0] for location in loopLocations]:
+				# loop guard evaluated to true
+				if (self.loop(self.lines[i])):
+					i += 1
+				else:
+					self.scope += 1
+					i = loopPositions[i]
+			# we have encountered end of a loop, go back to start of loop
+			elif i in [location[1] for location in loopLocations]:
+				self.scope -= 1
+				i = loopPositionsReverse[i]
 			self.readLine(self.lines[i])
 			i += 1
 
@@ -220,6 +235,29 @@ class Program():
 			functions[funcName] = goodLines
 		print(self.lines)
 		return functions
+
+	def getLoops(self):
+		"""
+		Determines the location of all loops in the program and stores the
+		value of the starting line and end line (last bracket) in a dictionary
+		"""
+		loops = {}
+		start = 0
+		scope = 0
+		inLoop = False
+
+		for i, line in enumerate(self.lines):
+			if "for" in line or "while" in line:
+				inLoop = True
+				start = i
+			if "{" in line and inLoop:
+				scope += 1
+			if "}" in line and inLoop:
+				scope -= 1
+				if scope == 0:
+					inLoop = False
+					loops[start] = i
+		return loops
 
 	def readText(self, cfile):
 		"""
