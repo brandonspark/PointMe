@@ -5,11 +5,14 @@ from tkinter import filedialog
 class Program(object):
     def __init__(self, d):
         self.varDicts = d
-        self.heapDict = {1: [Variable("w", "$B", True, 0), None, Variable("m", "$P", 2, 0)],
-                         2: [Variable("agh", "$F", -2.34, 0)]}
-        self.heapDict = {0: {}, 1: {'x': Variable("x", "$I", 40, 1), 'y': Variable("y", "$I", 2, 1)},
-                         2: {'0': Variable("0", "$I", 1, 1), '1': Variable("1", "$I", 2, 1),
-                             '2': Variable("2", "$I", None, 1)}}
+        #self.heapDict = {1: {"w": Variable("w", "$B", True, 0), "z": None, "m": Variable("m", "$P", 2, 0)},
+                         #2: {"agh": Variable("agh", "$F", -2.34, 0)}}
+        self.heapDict = {1: {'x': Variable("x", "$I", 40, 1), 'y': Variable("y", "$I", 2, 1)},
+                         2: {'0': Variable("0", "$I", 1, 1), '1': Variable("1", "$P", 3, 1),
+                             '2': Variable("2", "$I", None, 1)},
+                         3: {"ree": Variable("ree", "$I", 2, 0), "bee": Variable("bee", "$P", 5, 0)},
+                         4: {"w": Variable("w", "$B", True, 0), "z": None, "m": Variable("m", "$I", 2, 0)},
+                         5: {"agh": Variable("agh", "$F", -2.34, 0)}}
 
 
 class Variable:
@@ -24,7 +27,9 @@ class Variable:
 
 programVariable = Program([{"x": Variable("x", "$I", 46, 0), "y": Variable("y", "$S", "boop", 0),
                             "z": Variable("z", "$P", 1, 0), "zz": Variable("zz", "$P", None, 0),
-                            "BLAH": Variable("BLAH", "$I", None, 0)}])
+                            "BLAH": Variable("BLAH", "$I", None, 0),
+                            "point1": Variable("point1", "$P", 1, 0),
+                           "point2": Variable("point2", "$P", 2, 0)}])
 
 
 def drawButton(canvas, x, y, width, height, color, border=0):
@@ -62,9 +67,11 @@ def drawGroundSymbol(data, canvas, x1, y1, length):
 def init(data):
     #data.tempList = ["x", "y", "z", "zz", "BLAH"]
     data.counter = 0
-    data.variableNames = ["x", "y", "z", "zz", "BLAH"]
+    data.variableNames = ["x", "y", "z", "zz", "BLAH", "point1", "point2"]
     data.nextVariables = []
     data.program = programVariable
+    data.heapDict = {}
+    data.drawn = {}
 
     ### graphics ###
     data.ratio = 1/3
@@ -158,6 +165,7 @@ def redrawAll(canvas, data):
     canvas.create_text(data.uploadButtonx, data.uploadButtony, text="Upload file", fill=data.bgColor,
                        font=data.textFont)
 
+    data.drawn = {}
     # draw the first layer of variables (button, value, variable name)
     varDict = data.program.varDicts[-1]
     x = data.ratio * data.width / 2
@@ -171,6 +179,7 @@ def redrawAll(canvas, data):
             width = data.variableWidthdx * len(text)
         else:
             width = data.variableWidthdx * 2
+        variable.x, variable.y = x, y
         drawButton(canvas, x, y, width, data.variableHeight, "seashell3")
         # draw value
         if variable.type != "$P" and variable.value is not None:
@@ -189,74 +198,100 @@ def redrawAll(canvas, data):
         x0 = data.ratio*data.width * 3/2
         pointerDrawn = False
         if variable.type == "$P" and variable.value is not None:
-            nextVariables = data.program.heapDict[variable.value]
-            data.nextVariables += nextVariables
-            for i in range(len(nextVariables)):
-                nextVariable = nextVariables[i]
-                # draw button
-                if nextVariable != None:
-                    if nextVariable.type != "$P":
-                        text = str(nextVariable.value)
-                        width = data.variableWidthdx * len(text)
-                    else:
-                        width = data.variableWidthdx * 2
+            if variable.value in data.drawn:
+                oldx, oldy = data.drawn[variable.value][0], data.drawn[variable.value][1]
+                canvas.create_line(variable.x, variable.y, oldx, oldy, width=data.pointerWidth, arrow=LAST)
+                pointerDrawn = True
+            else:
+                nextVariablesDict = data.program.heapDict[variable.value]
+                iter(nextVariablesDict.items())
+                nextVariables = []
+                for key, value in nextVariablesDict.items():
+                    nextVariables += [value]
+                data.nextVariables += nextVariables
+                for i in range(len(nextVariables)):
+                    nextVariable = nextVariables[i]
+                    # draw button
+                    if nextVariable != None:
+                        if nextVariable.type != "$P" and nextVariable.value is not None:
+                            text = str(nextVariable.value)
+                            width = data.variableWidthdx * len(text)
+                        else:
+                            width = data.variableWidthdx * 2
+                        x0 += width/2
+                        if not pointerDrawn:
+                            canvas.create_line(x, y, x0-width/2, y0, width=data.pointerWidth, arrow=LAST)
+                            data.drawn[variable.value] = [x0-width/2, y0]
+                            pointerDrawn = True
+                        nextVariable.x, nextVariable.y = x0, y0
+                        drawButton(canvas, x0, y0, width, data.variableHeight, "seashell3", border=1)
+                        # draw value
+                        if nextVariable.type != "$P" and nextVariable.value is not None:
+                            canvas.create_text(x0, y0, text=text, font=data.textFont, fill=data.bgColor)
+                        else:
+                            if nextVariable.type == "$P":
+                                if nextVariable.value is None:
+                                    drawGroundSymbol(data, canvas, x0, y0, 60)
+                                canvas.create_oval(x0 - r, y0 - r, x0 + r, y0 + r, fill="black")
+                            elif nextVariable.value is None:
+                                canvas.create_text(x0, y0, text="?", font=data.textFont, fill=data.bgColor)
+                        # no variable names to draw
                     x0 += width/2
-                    if not pointerDrawn:
-                        canvas.create_line(x, y, x0-width/2, y0, width=data.pointerWidth, arrow=LAST)
-                        pointerDrawn = True
-                    nextVariable.x, nextVariable.y = x0, y0
-                    drawButton(canvas, x0, y0, width, data.variableHeight, "seashell3", border=1)
-                    # draw value
-                    if nextVariable.type != "$P" and nextVariable.value is not None:
-                        canvas.create_text(x0, y0, text=text, font=data.textFont, fill=data.bgColor)
-                    else:
-                        if nextVariable.type == "$P":
-                            if nextVariable.value is None:
-                                drawGroundSymbol(data, canvas, x0, y0, 60)
-                            canvas.create_oval(x0 - r, y0 - r, x0 + r, y0 + r, fill="black")
-                        elif nextVariable.value is None:
-                            canvas.create_text(x0, y0, text="?", font=data.textFont, fill=data.bgColor)
-                    # no variable names to draw
-                x0 += width/2
-            y0 += data.variableInterval
+                y0 += data.variableInterval
 
         y += data.variableInterval
 
     # draw the second layer of variables
     y1 = 80
-    #while data.nextVariables != []:
-    for startVariable in data.nextVariables:
-        pointerDrawn = False
-        if startVariable is not None and startVariable.type == "$P":
-            x1 = data.ratio * data.width * 2
-            endVariables = data.program.heapDict[startVariable.value]
-            for endVariable in endVariables:
-                # draw button
-                if endVariable != None:
-                    if endVariable.type != "$P":
-                        text = str(endVariable.value)
-                        width = data.variableWidthdx * len(text)
-                    else:
-                        width = data.variableWidthdx * 2
-                    x1 += width / 2
-                    if not pointerDrawn:
-                        canvas.create_line(startVariable.x, startVariable.y, x1 - width / 2, y1,
-                                           width=data.pointerWidth, arrow=LAST)
-                        pointerDrawn = True
-                    drawButton(canvas, x1, y1, width, data.variableHeight, "seashell3", border=1)
-                    # draw value
-                    if endVariable.type != "$P" and endVariable.value is not None:
-                        canvas.create_text(x1, y1, text=text, font=data.textFont, fill=data.bgColor)
-                    else:
-                        if endVariable.type == "$P":
-                            if endVariable.value is None:
-                                drawGroundSymbol(data, canvas, x1, y1, 60)
-                            canvas.create_oval(x1 - r, y1 - r, x1 + r, y1 + r, fill="black")
-                        elif endVariable.value is None:
-                            canvas.create_text(x1, y1, text="?", font=data.textFont, fill=data.bgColor)
-                    # no variable names to draw
-                x1 += width / 2
-        y0 += data.variableInterval
+    while data.nextVariables != []:
+        newNextVariables = []
+        for startVariable in data.nextVariables:
+            pointerDrawn = False
+            if startVariable is not None and startVariable.type == "$P":
+                x1 = data.ratio * data.width * 2
+                print(startVariable.value, data.drawn)
+                if startVariable.value in data.drawn:
+                    print("ALREADY DRAWN")
+                    oldx, oldy = data.drawn[startVariable.value][0], data.drawn[startVariable.value][1]
+                    canvas.create_line(startVariable.x, startVariable.y, oldx, oldy, width=data.pointerWidth, arrow=LAST)
+                    pointerDrawn = True
+                else:
+                    endVariablesDict = data.program.heapDict[startVariable.value]
+                    iter(endVariablesDict.items())
+                    endVariables = []
+                    for key, value in endVariablesDict.items():
+                        endVariables += [value]
+                    newNextVariables += endVariables
+                    for endVariable in endVariables:
+                        # draw button
+                        if endVariable != None:
+                            if endVariable.type != "$P" and endVariable.value is not None:
+                                text = str(endVariable.value)
+                                width = data.variableWidthdx * len(text)
+                            else:
+                                width = data.variableWidthdx * 2
+                            x1 += width / 2
+                            if not pointerDrawn:
+                                canvas.create_line(startVariable.x, startVariable.y, x1 - width / 2, y1,
+                                                   width=data.pointerWidth, arrow=LAST)
+                                data.drawn[startVariable.value] = [x1 - width / 2, y1]
+                                #print(startVariable.value, data.drawn[startVariable.value], data.drawn)
+                                pointerDrawn = True
+                            drawButton(canvas, x1, y1, width, data.variableHeight, "seashell3", border=1)
+                            # draw value
+                            if endVariable.type != "$P" and endVariable.value is not None:
+                                canvas.create_text(x1, y1, text=text, font=data.textFont, fill=data.bgColor)
+                            else:
+                                if endVariable.type == "$P":
+                                    if endVariable.value is None:
+                                        drawGroundSymbol(data, canvas, x1, y1, 60)
+                                    canvas.create_oval(x1 - r, y1 - r, x1 + r, y1 + r, fill="black")
+                                elif endVariable.value is None:
+                                    canvas.create_text(x1, y1, text="?", font=data.textFont, fill=data.bgColor)
+                            # no variable names to draw
+                        x1 += width / 2
+                y1 += data.variableInterval
+        data.nextVariables = newNextVariables
 
 
 ####################################
