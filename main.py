@@ -10,7 +10,6 @@ actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
 typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
 typeMap2 = {'$I': 'int', '$S': 'string', '$B': 'bool', '$F': 'float', '$D': 'double', '$L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
-
 operators = ["+","-","*","/","(",")","==",'>>','<<','<', '>','>=','<=','!=']
 opReturns = {'+': '$I', '-': '$I', '*': '$I', '/': '$I', '==': '$B', '>>': '$I', '<<': '$I','<':'$B','>':'$B','>=':'$B','<=':'$B','!=':'$B'}
 spacedThings = ["+","/","(",")","==",'>>','<<','>=','<=','!=','[',']','->']
@@ -47,7 +46,7 @@ class Program():
 		print(self.lines)
 		self.shortenTypes()
 		self.funcDict = self.getFunctions()
-		self.loopPositions = self.getLoops() # key: line number of start of loop, value: line number of end of loop
+		self.loopPositions = self.getLoopPositions() # key: line number of start of loop, value: line number of end of loop
 		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains for loops we are currently inside
 		self.varDicts = [{}]
@@ -58,6 +57,7 @@ class Program():
 			for i, line in enumerate(self.lines):
 				line = line.replace(type, '$' + type)
 				self.lines[i] = line
+		print('after replace', self.structDict)
 		self.loopPositions = self.getLoopPositions() # key: line number of start of loop, value: line number of end of loop
 		self.loopPositionsReverse = {v: k for k, v in self.loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains "for" loops we are currently inside
@@ -72,9 +72,7 @@ class Program():
 		print('ourlines', self.lines)
 		print(self.heapDict)
 		print(self.heapNum)
-		print(self.mallocParser(0, 'x', 'malloc(sizeof($struct_t))', '$struct_t'))
 		print('current heap', self.heapDict)
-		print('var', self.varDicts[-1]['x'].value)
 		print('cond', self.conditionalPositions)
 		f = open('output.txt', 'w')
 		for i, line in enumerate(self.lines):
@@ -84,6 +82,15 @@ class Program():
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
+<<<<<<< HEAD
+		self.execute()
+		print('var', self.varDicts[-1])
+		print('heap', self.heapDict)
+	def findMain(self):
+		for i, line in enumerate(self.lines):
+			if 'main' in line:
+				return i
+=======
 
 	def getLoops(self):
 		return {"hi":"hi"}
@@ -93,6 +100,7 @@ class Program():
 #		for i, line in enumerate(self.lines):
 #			if 'main' in line:
 #				return i
+>>>>>>> bf1940fc26931c4b72d9ce36a65dca33d6bc0ddf
 
 	def execute(self):
 		return 	 	
@@ -113,12 +121,10 @@ class Program():
 					lastBrace = self.loopPositions[index]
 					packet = (cond, action, firstBrace, lastBrace)
 					self.loopList.append(packet)
-					#print(self.loopList)
-					#print('set i = 0')
+
 					# loop guard evaluated to true
 					if (self.loop(self.loopList[-1][0])):
 						index = self.loopList[-1][2]
-						#print('ive been sent to', self.lines[index])
 					else:
 						index = self.loopList[-1][3] #will send to } and take care of scope
 				else: #its a while loop
@@ -149,6 +155,7 @@ class Program():
 				if self.loop(cond).value:
 					None
 			#print(index, self.scope, self.lines[index], self.varDicts[-1])
+			print(index, self.lines[index])
 			self.readLine(self.lines[index])
 			index += 1
 			#print(index, self.varDicts[-1])
@@ -165,6 +172,11 @@ class Program():
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
 				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
+<<<<<<< HEAD
+		index = 0
+		while index < len(funcCode):
+			line = funcCode[index]
+
 		braceLevel = 0
 		loopBraceLevels = {}
 		y = 0
@@ -218,7 +230,10 @@ class Program():
 			curStr = ''
 			for exp in expr:
 				curStr += exp
+			print('declare this', split[1], curStr, split[0])
 			self.declare(split[1], curStr, split[0])
+		elif 'return' in line:
+			None
 		elif line[0] == '$' and line[-1] == ')': #its a function!
 			#do some function magic here
 			None
@@ -283,6 +298,7 @@ class Program():
 
 	def declare(self, name, expression, mtype):
 		#print('!!', name)
+		print('declore', name, expression, mtype)
 		if 'malloc' in expression:
 			self.mallocParser(0, name, expression, mtype)
 			return
@@ -312,13 +328,16 @@ class Program():
 		expression = expression.replace(' ', '')
 		expression = expression.split('*')
 		struct = {}
+		print('heres my expression', name, expression[0], self.structDict)
 		if not hasDigit: #not found digit
+			print('no digit')
 			size = 1
 			type = expression[0]
 			if type in self.structDict.keys():
 				size = len(self.structDict[type])
 				for fieldName in self.structDict[type].keys():
 					struct[fieldName] = Variable.Variable('-', self.structDict[type][fieldName], None, self.scope)
+			print('mystruct', struct, self.structDict)
 		else:
 			if expression[0].isdigit():
 				type = expression[1]
@@ -333,6 +352,7 @@ class Program():
 			for i in range(int(size)):
 				struct[str(i)] = Variable.Variable('-', type, None, self.scope) 
 		self.heapDict[self.heapNum] = struct
+		print('done', self.heapDict, struct)
 		self.heapNum += 1
 		if flag == 1: #assign
 			obj = self.varDicts[-1][name.strip('*')]
@@ -340,8 +360,11 @@ class Program():
 			obj.type = '$P'
 			obj.scope = self.scope
 		else: #declare
+			print('name', name)
 			obj = Variable.Variable(str(name).strip('*'), '$P', self.heapNum - 1, self.scope)
 			self.varDicts[-1][str(name).strip('*')] = obj
+		print('done with malloc', self.heapDict)
+		print(name, expression, type)
 		return self.heapNum - 1
 
 	def isValidAssign(self, line):
@@ -503,19 +526,22 @@ class Program():
 		for i, line in enumerate(self.lines): #gets all the struct lines
 			if line[:len('struct')] == 'struct' and line[-1] != ';':
 				split = line.split()
+				print('s', split)
 				structName = split[1]
 				count = 0
 				fields = {}
 				for line in self.lines[i + 1:]:
+					print(line)
 					if line == '{':
 						count += 1
 					elif line == '}':
 						count -= 1
 						if count == 0:
 							break
-					if line[0] == '$':
+					else: 
+						line = '$' + line
 						line = line[:-1]
-						fieldName = line.split()[1]
+						fieldName = line.split()[1].strip('*')
 						type = line.split()[0]
 						fields[fieldName] = type
 				structs[structName] = fields
