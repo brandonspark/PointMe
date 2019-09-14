@@ -1,10 +1,11 @@
-int f(int x){
-	return x + 1;
+int derefp1(int* x)
+{
+	return *x + 1;
 }
 
-int main(){
-	int y = 1;
-	int x = y + 2;
-	string z = "hi there\n";
-	return f(x);
+int main() 
+{
+	int *y = malloc(sizeof(int));
+	*y = 3;
+	return derefp1(y);
 }

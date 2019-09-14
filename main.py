@@ -1,15 +1,16 @@
 import numpy as np
 #from evalexpression import *
 import Variable
+import string
 
 functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
 typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
-typeMap2 = {'I': 'int', 'S': 'string', 'B': 'bool', 'F': 'float', 'D': 'double', 'L': 'long'}
+typeMap2 = {'$I': 'int', '$S': 'string', '$B': 'bool', '$F': 'float', '$D': 'double', '$L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
-operators = ["+","-","*","/","(",")","=="]
-precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1}
-
+operators = ["+","-","*","/","(",")","==",'>>']
+spacedOperators = ["+","-","/","(",")","==",'>>']
+precedence = {"*":5, "/":5, "+":3, "-":3,"==":1,"(":-1,'>>':4 }
 
 def stringIsInt(s):
 	try:
@@ -19,9 +20,8 @@ def stringIsInt(s):
 		return False
 
 def applyOperator(op, v1, v2):
-	print("v1 and v2 are: ", v1.value, v2.value)
 	if op in operators:
-		return v2.value+v1.value
+		return Variable.Variable(None, None, int(eval(str(v2.value)+op+str(v1.value))), None)
 
 class Program():
 	def __init__(self, cfile):
@@ -29,21 +29,29 @@ class Program():
 		Initializes all the program data.
 		"""
 		self.lines = self.splitLines(self.cleanText(self.readText(cfile)))
+		print(self.lines)
 		self.shortenTypes()
 		self.funcDict = self.getFunctions()
 		self.loopPositions = self.getLoops() # key: line number of start of loop, value: line number of end of loop
 		self.loopPositionsReverse = {v: k for k, v in loopPositions.items()} # key, value switched from loopPositions
 		self.loopList = [] # stores tuple (line, scope) that contains for loops we are currently inside
 		self.varDicts = [{"nope":"hi"}]
+		self.structDict = self.getStructs()
 		self.scope = 0
-		self.tmpstate = 0
+		self.heapDict = {}
+		self.heapNum = 0
 
+		self.mallocParser(0, '*x', 	'malloc(sizeof(myStruct))', '$I')
+		print(self.lines)
+		print(self.heapDict)
+		print(self.heapNum)
+		print("woah")
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
 
 	def execute(self):
-		index = i
+		index = 0
 		while(i < len(self.lines)):
 			# we have encountered start of a loop, evaluate loop and react accordingly
 			if i in [location[0] for location in loopLocations]:
@@ -65,23 +73,17 @@ class Program():
 		funcCode = self.funcDict[funcName]
 		returnType = funcCode[0].split()[0]
 		numParams = len(funcCode[0].split(','))
-		if numParams != 1:
-			assert(numParams == len(params))
+		#print("num params", numParams)
+		if numParams != 0:
+			#print("declaring params")
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
-				declare(paramStrings[i] + " = " + str(params[i]) + ';')
+				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
 		for line in funcCode:
-			try:
-				self.readLine(line)
-				if 'return' in line:
-					self.ret(line)
-			except ValueError as err:
-				print("returning", str(err))
-				return err
-	
-	def ret(self, line):
-		rest = line.replace('return', '')[:-1]
-		raise ValueError((self.evalExpression(rest)).value)
+			self.readLine(line)
+			if 'return' in line:
+				rest = line.replace('return', '')[:-1]
+				return Variable.Variable(None, None, self.evalExpression(rest).value, None)
 
 	def readLine(self, line):
 		if line[0] == '$' and line[-1] == ';': #its a declare
@@ -99,6 +101,7 @@ class Program():
 		elif line[0] == '$' and line[-1] == ')': #its a function!
 			#do some function magic here
 			None
+
 		elif 'for' in line or 'while' in line:
 			self.loop(line)
 		elif '=' in line: #tentatively, this is a assign
@@ -113,61 +116,97 @@ class Program():
 			curStr = ''
 			for exp in expr:
 				curStr += exp
-			if split[0] not in self.varDicts[-1].keys():
+			if split[0] not in self.varDicts[-1].keys() and split[0].strip('*') not in self.varDicts[-1].keys():
 				raise Exception('Variable doesn\'t exist')
 			self.assign(split[0], curStr)
 		elif line == '{':
 			self.scope += 1
+			return line
 		elif line == '}':
 			self.scope -= 1
-			# TODO: get rid of any vars with scope greater than self.scope
-			# and check if any loops in loopStack have scope equal to self.scope
-		elif 
+			self.scopeClear()
+			return line
 
-	def readLine2(self, line):
-		#flag, condition, (name, expressionString) = self.isValidAssign(line)
-		condition = ['declare', 'assign', 'ret'][self.tmpstate]
-		name = ['y', 'y', None][self.tmpstate]
-		expressionString = ['1', 'y+1', None][self.tmpstate]
-		self.tmpstate += 1
-		#print('fuck', flag, condition, name, expressionString)
-		if True: #then it is a declare or assign
-			if condition == 'declare': # it is a declare
-				self.declare(name, expressionString, line[:2])
-			elif condition == 'assign': # it is an assign
-				self.assign(name, expressionString)
- 
-		#if 'for' in line[:len('for')]:
-		#	self.scope += 1
-		#	rest = line[len('for'):]
-		#	type = rest[1:2]
-		#	assignString = rest[4:].split()
-		#	if rest[1] != '$':
-		#		raise Exception('Didn\'t have a type.')
-		#	else:
-		#		name = assignString[0]
-		#		expression = assignString[2][:-1]
-		#		self.assign(name, expressionString)
-		#	print(rest)
-		#elif 'while' == line[:len('while')]:
-		#	None
+	def scopeClear(self):
+		for var in varDicts[-1].keys():
+			if self.scope < var.scope:
+				varDicts[-1].pop(var)
 
 	def assign(self, name, expression):
-		print("expression is", expression)
+		#print("expression is", expression)
+		if 'malloc' in expression:
+			self.mallocParser(1, name, expression, mtype)
+			return
 		newValue = self.evalExpression(expression)
-		var = self.varDicts[-1][name]
-		var.value = newValue
-		self.varDicts[-1].update({name : var})
+		#print("new value: ", newValue)
+		if name[0] == '*' and name[1] != '*': #dereferencing 1x
+			self.heapDict[(self.varDicts[-1][name[1:]]).value][0].value = newValue.value
+		# TODO implement dereferencing 2x or more
+		else:
+			var = self.varDicts[-1][name]
+			var.value = newValue.value
+			self.varDicts[-1].update({name : var})
 
 	def declare(self, name, expression, mtype):
+		#print('!!', name)
+		if '*' in name:
+			self.mallocParser(0, name, expression, mtype)
+			return
 		value = self.evalExpression(expression)
 		scope = self.scope
 		newVar = Variable.Variable(mtype, name, value.value, scope)
 		self.varDicts[-1].update({name : newVar})
 
+	def mallocParser(self, flag, name, expression, type):
+		#print("expr", expression)
+		hasDigit = False
+		for char in expression:
+			if char.isdigit():
+				#print("found digit")
+				hasDigit = True
+				break
+		expression = expression.replace('malloc', '')
+		expression = expression.replace('(', '')
+		expression = expression.replace(')', '')
+		expression = expression.replace('sizeof', '')
+		expression = expression.replace(' ', '')
+		expression = expression.split('*')
+		struct = {}
+		if not hasDigit: #not found digit
+			size = 1
+			type = expression[0]
+			if type in self.structDict.keys():
+				size = len(self.structDict[type])
+				for fieldName in self.structDict[type].keys():
+					struct[fieldName] = Variable.Variable('-', self.structDict[type][fieldName], None, self.scope)
+		else:
+			if expression[0].isdigit():
+				type = expression[1]
+				if '*' in type:
+					type = '$P'
+				size = expression[0]
+			elif expression[1].isdigit():
+				type = expression[0]
+				if '*' in type:
+					type = '$P'
+				size = expression[1]
+			for i in range(int(size)):
+				struct[str(i)] = Variable.Variable('-', type, None, self.scope) 
+		self.heapDict[self.heapNum] = struct
+		self.heapNum += 1
+		if flag == 1: #assign
+			obj = self.varDicts[-1][name.strip('*')]
+			obj.value = self.heapNum - 1
+			obj.type = '$P'
+			obj.scope = self.scope
+		else: #declare
+			obj = Variable.Variable(str(name).strip('*'), '$P', self.heapNum - 1, self.scope)
+			self.varDicts[-1][str(name).strip('*')] = obj
+		return self.heapNum - 1
+
 	def isValidAssign(self, line):
 		hasType = False
-		print("line is: ", line)
+		#print("line is: ", line)
 		if line[0] == '$':
 			hasType = True
 		
@@ -175,29 +214,27 @@ class Program():
 			pass
 		#	raise Exception('No semicolon.')
 		else:
-			line = line[:-1]
-
-		split = line.split()
-		if hasType and split[2] != '=':
-			pass
-			#raise Exception('Not a valid assign.')
-		
-		if hasType:	
-			if split[0] not in castMap.keys():
-				pass
-				#raise Exception('Not a valid type.')
-			expr = split[3:]
-			curStr = ''
-			for exp in expr:
-				curStr += exp
-			return True, 'declare', (split[1], curStr)
-		else:
-			expr = split[2:]
-			curStr = ''
-			for exp in expr:
-				curStr += exp
-			return True, 'assign', (split[0], curStr)
-		return False, None, None
+			if expression[0].isdigit():
+				type = expression[1]
+				if '*' in type:
+					type = '$P'
+				size = expression[0]
+			elif expression[1].isdigit():
+				type = expression[0]
+				if '*' in type:
+					type = '$P'
+				size = expression[1]
+		self.heapDict[self.heapNum] = [Variable.Variable('-', type, None, self.scope) for i in range(int(size))]
+		self.heapNum += 1
+		if flag == 1: #assign
+			obj = self.varDicts[-1][name]
+			obj.value = self.heapNum - 1
+			obj.type = '$P'
+			obj.scope = self.scope
+		else: #declare
+			obj = Variable.Variable(name, '$P', self.heapNum - 1, self.scope)
+			self.varDicts[-1][name.strip('*')] = obj
+		return self.heapNum - 1
 
 	def shortenTypes(self):
 		"""
@@ -233,7 +270,7 @@ class Program():
 					if scope == 0:
 						break
 			functions[funcName] = goodLines
-		print(self.lines)
+		#print(self.lines)
 		return functions
 
 	def getLoops(self):
@@ -258,6 +295,35 @@ class Program():
 					inLoop = False
 					loops[start] = i
 		return loops
+
+	def getStructs(self):
+		"""
+		This function will go to all the line numbers of all the functions in the program, and store only the lines
+		pertaining to that function in a list. It will then map the function's name to the list of the function's lines.
+		"""
+
+		structs = {}
+		print("here", self.lines)
+		for i, line in enumerate(self.lines): #gets all the struct lines
+			if line[:len('struct')] == 'struct':
+				split = line.split()
+				structName = split[1]
+				count = 0
+				fields = {}
+				for line in self.lines[i + 1:]:
+					if line == '{':
+						count += 1
+					elif line == '}':
+						count -= 1
+						if count == 0:
+							break
+					if line[0] == '$':
+						line = line[:-1]
+						fieldName = line.split()[1]
+						type = line.split()[0]
+						fields[fieldName] = type
+				structs[structName] = fields
+		return structs
 
 	def readText(self, cfile):
 		"""
@@ -303,6 +369,8 @@ class Program():
 				currentStr = ''
 			else:
 				currentStr += char
+		progLines = [x.strip() for x in progLines]
+		progLines = [x for x in progLines if x != '']
 		return progLines
 
 	def isFunctionHeader(self, string):
@@ -321,24 +389,35 @@ class Program():
 		s = s.split(",")
 		params = []
 		for param in s:
-			params.append(self.evalExpression(param))
+			params.append(self.evalExpression(param).value)
+		#print("params", params)
 		return params
 
 	def evalExpression(self, s):
-		print("evaling: ", s)
+		#print("evaling: ", s)
 		valueStack = []
 		operatorStack = []
-		for x in operators:
+		for x in spacedOperators:
 			s = s.replace(x, " "+x+" ")
 		tokens = s.split()
+		#print('tokens: ', tokens)
+		print('varDicts', self.varDicts[-1])
 		y = 0
 		while y < len(tokens):
 			#print y, tokens[y], operatorStack, valueStack
 			token = tokens[y]
 			if stringIsInt(token):
-				valueStack.append(Variable.Variable(None, None, int(token), None)) 
+				valueStack.append(Variable.Variable(None, None, int(token), None))
+			#if token in ['true', 'false']:
+			#	valueStack.append(Variable.Variable(None, '$B', token=='true', None)) 
 			elif token in self.varDicts[-1].keys():
 				valueStack.append(self.varDicts[-1][token])
+			elif token[1:] in self.varDicts[-1].keys() and token[0] == "*" and token[1] != '*': #dereferencing
+				print("deref!")
+				valueStack.append(self.heapDict[(self.varDicts[-1][token[1:]]).value][0])
+			elif token.strip('*') in self.varDicts[-1].keys() and token[0] == "*": #dereferencing more than once
+				print("deref! multiple!")
+				valueStack.append(self.heapDict[self.evalExpression(token[1:]).value][0])
 			elif token == "(":
 				operatorStack.append(token)
 			elif token == ")":
@@ -374,7 +453,8 @@ class Program():
 			v1 = valueStack.pop()
 			v2 = valueStack.pop()
 			valueStack.append(applyOperator(x, v1, v2))
+		print("returning", valueStack[0])
 		return valueStack[0]
 
 p = Program('cfile.txt')
-print(p.getFuncValue('main', []))
+print(p.getFuncValue('main', []).value)
