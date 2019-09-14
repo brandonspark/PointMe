@@ -4,6 +4,7 @@ import Variable
 import string
 import re
 import shlex
+import copy
 
 functionTypes = ['$I', '$S', '$B', '$F', '$D', '$V', '$L']
 actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
@@ -101,7 +102,6 @@ class Program():
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
-		self.execute()
 		print('var', self.varDicts[-1])
 		print('heap', self.heapDict)
 		print('func', self.funcDict)
@@ -111,68 +111,9 @@ class Program():
 			if 'main' in line:
 				return i
 
-	def execute(self):
-		return 	 	
-		index = self.findMain()
-		while(index < len(self.lines)):
-			# we have encountered start of a loop, evaluate loop and react accordingly
-			#print('now', index, self.lines[index])
-			if index in self.loopPositions.keys():
-				if 'for' in self.lines[index]: #if its a for loop
-					#print('found a for')
-					#declare the vars, push the relevant data to loopList
-					split = self.lines[index][4:-1].split()
-					self.scope += 1
-					self.declare(split[1], concat(split[3:]), split[0])
-					cond = self.lines[index + 1][:-1]
-					action = self.lines[index + 2][:-1]
-					firstBrace = index + 3
-					lastBrace = self.loopPositions[index]
-					packet = (cond, action, firstBrace, lastBrace)
-					self.loopList.append(packet)
-
-					# loop guard evaluated to true
-					if (self.loop(self.loopList[-1][0])):
-						index = self.loopList[-1][2]
-					else:
-						index = self.loopList[-1][3] #will send to } and take care of scope
-				else: #its a while loop
-					cond = self.lines[index][5:].lstrip('(').rstrip(')')
-					firstBrace = index + 1
-					lastBrace = self.loopPositions[index]
-					packet = (cond, None, firstBrace + 1, lastBrace)
-					self.loopList.append(packet)
-			# we have encountered end of a loop, go back to start of loop
-			#print('again', self.loopList)
-			if len(self.loopList) != 0:
-				if index >= self.loopList[-1][3]: #if we're past the loop
-					if self.loopList[-1][1][-2:] == '++':
-						self.varDicts[-1][self.loopList[-1][1][:-2]].value += 1
-						#print('i++: i =', self.varDicts[-1][self.loopList[-1][1][:-2]].value)
-					elif self.loopList[-1][1][-2:] == '--':
-						self.varDicts[-1][self.loopList[-1][1][:-2]].value -= 1
-					if self.loop(self.loopList[-1][0]).value: #if loop condition still holds
-						#print('if i < 5: True')
-						index = self.loopList[-1][2] #send back to front of loop
-					else:
-						#print('if i < 5: False')
-						self.loopList.pop()
-			if 'if' == self.lines[index][:len('if')]: #if we've found an if
-				cond = self.lines[index][len('if'):]
-				cond = cond.lstrip('(').rstrip(')')
-				print('here we are', self.lines[index], cond)
-				if self.loop(cond).value:
-					None
-			#print(index, self.scope, self.lines[index], self.varDicts[-1])
-			print(index, self.lines[index])
-			self.readLine(self.lines[index])
-			index += 1
-			#print(index, self.varDicts[-1])
-			#print([self.varDicts[-1][x].value for x in self.varDicts[-1].keys()])
-
 	def getFuncValue(self, funcName, params):
-		print("=----------------", self.funcDict)
-		self.varDicts.append({})
+		nowCopy = copy.deepcopy(self.varDicts[-1])
+		self.varDicts.append(nowCopy)
 		funcCode = self.funcDict[funcName]
 		returnType = funcCode[0].split()[0]
 		numParams = len(funcCode[0].split(','))
@@ -187,7 +128,7 @@ class Program():
 		loopBraceLevels = {}
 		y = 0
 		while y < len(funcCode):
-			print(y, funcCode[y], braceLevel)
+			print('=-----line', y, funcCode[y], self.scope, self.varDicts[-1])
 			line = funcCode[y]
 			if '{' in line:
 				braceLevel += 1
@@ -203,6 +144,8 @@ class Program():
 						print("loop guard is true")
 						print(funcCode[linenum+1])
 						y = linenum+1
+						print('lime', line)
+						self.readLine(line)
 						continue
 			if 'return' in line:
 				rest = line.replace('return', '')[:-1]
@@ -246,9 +189,12 @@ class Program():
 				self.varDicts[-1][rest].value = None
 				#print("the heap after freeing is", self.heapDict)
 				#print("the stack after freeing is", self.varDicts[-1])
-
+			#nowState = self.varDicts[-1].copy()
+			#self.varDicts.append(nowState)
 			self.readLine(line)
+			#self.varDicts.pop()
 			y += 1
+		self.varDicts.pop()
 
 	def readLine(self, line):
 		if line[0] == '$' and line[-1] == ';': #its a declare
@@ -287,13 +233,16 @@ class Program():
 			self.scope -= 1
 			#print('about to scope clear', self.scope, line, self.varDicts)
 			self.scopeClear()
+		print('in scope', self.varDicts[-1])
 
 	def scopeClear(self):
 		if len(self.varDicts[-1].keys()) == 0:
 			return
+		print('aout to clear', self.scope, self.varDicts[-1])
 		for var in self.varDicts[-1].copy().keys():
 			if self.scope < self.varDicts[-1][var].scope:
 				self.varDicts[-1].pop(var)
+		print('after clear', self.scope, self.varDicts[-1])
 
 	def assign(self, name, expression):
 		print("assign expression is", expression)
@@ -720,9 +669,11 @@ class Program():
 			v1 = valueStack.pop()
 			v2 = valueStack.pop()
 			valueStack.append(applyOperator(x, v1, v2))
-		print("------", self.varDicts[-1])
+		#print("------", self.varDicts[-1])
 		print("returning", valueStack)
 		return valueStack[0]
 
 p = Program('cfile.txt')
 print(p.getFuncValue('main', []).value)
+print('after', p.scope)
+print('var', p.varDicts[-1])
