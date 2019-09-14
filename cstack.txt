@@ -1,0 +1,43 @@
+typedef stack_node node;
+struct stack_node
+{
+	int value;
+	node *next;
+}
+
+node *stack_new()
+{
+	node *s = malloc(sizeof(node));
+	s = NULL;
+	return s;
+}
+
+void push(node *head, int val)
+{
+	node *elem = malloc(sizeof(node));
+	elem->value = val;
+	elem->next = head;
+	head = elem;
+}
+
+int pop(node *head)
+{
+	node *temp = head;
+	int result = temp->value;
+	head = head->next;
+	free(temp);
+	return result;
+}
+
+int main()
+{
+	node *stack = stack_new();
+	push(stack, 5);
+	push(stack, 7);
+	push(stack, 3);
+	pop(stack);
+	push(stack, 10);
+	pop(stack);
+
+	return 0; // This should cause a memory leak!
+}
