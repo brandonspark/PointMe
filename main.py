@@ -10,7 +10,10 @@ actualTypes = ['int', 'string', 'char', 'bool', 'float', 'double', 'long']
 typeMap = [('int', '$I'), ('string', '$S'), ('bool', '$B'), ('float', '$F'), ('double', '$D'), ('void', '$V'), ('long', '$L')]
 typeMap2 = {'$I': 'int', '$S': 'string', '$B': 'bool', '$F': 'float', '$D': 'double', '$L': 'long'}
 castMap = {'$I': type(5), '$S': type(''), '$B': type(True), '$F': type(1.1), '$D': type(1.1), '$L': type(1)}
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 operators = ["+","-","*","/","(",")","==",'>>','<<','<', '>','>=','<=','!=']
 opReturns = {'+': '$I', '-': '$I', '*': '$I', '/': '$I', '==': '$B', '>>': '$I', '<<': '$I','<':'$B','>':'$B','>=':'$B','<=':'$B','!=':'$B'}
 spacedThings = ["+","/","(",")","==",'>>','<<','>=','<=','!=','[',']','->']
@@ -84,14 +87,33 @@ class Program():
 		#print("hello", self.lines)
 		#print("func", self.funcDict)
 		#self.readLine('for($I i = 0;')
+<<<<<<< HEAD
 		self.execute()
 		print('var', self.varDicts[-1])
 		print('heap', self.heapDict)
 		print('func', self.funcDict)
+=======
+		#self.execute()
+		print('var', self.varDicts[-1])
+		print('heap', self.heapDict)
+
+>>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 	def findMain(self):
 		for i, line in enumerate(self.lines):
 			if 'main' in line:
 				return i
+<<<<<<< HEAD
+=======
+
+	def getLoops(self):
+		return {"hi":"hi"}
+
+#		self.execute()
+#	def findMain(self):
+#		for i, line in enumerate(self.lines):
+#			if 'main' in line:
+#				return i
+>>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 
 	def execute(self):
 		return 	 	
@@ -163,6 +185,7 @@ class Program():
 			paramStrings = ['$' + (param.translate(str.maketrans('', '', string.punctuation)).strip()) for param in funcCode[0].split('$')[2:]]
 			for i in range(0, len(params)):
 				self.readLine(paramStrings[i] + " = " + str(params[i]) + ';')
+<<<<<<< HEAD
 		braceLevel = 0
 		loopBraceLevels = {}
 		for y in range(0, len(funcCode)):
@@ -187,10 +210,52 @@ class Program():
 							braceLevel += 1
 						if '}' in thisLine:
 							braceLevel -= 1
+=======
+		index = 0
+		while index < len(funcCode):
+			line = funcCode[index]
+			braceLevel = 0
+			loopBraceLevels = {}
+			y = 0
+			while y < len(funcCode):
+				print(y, funcCode[y], braceLevel)
+				line = funcCode[y]
+				if '{' in line:
+					braceLevel += 1
+				if '}' in line:
+					braceLevel -= 1
+					if braceLevel in loopBraceLevels.keys(): #i.e. we're at the end of the loop
+						print("Were at end of loop")
+						loopGuard, linenum = loopBraceLevels[braceLevel]
+						print(loopGuard)
+						print(self.varDicts[-1])
+						loopGuardTruthValue = self.evalExpression(loopGuard)
+						if loopGuardTruthValue.value == 1:
+							print("loop guard is true")
+							print(funcCode[linenum+1])
+							y = linenum+1
+							continue
+				if 'return' in line:
+					rest = line.replace('return', '')[:-1]
+					return self.evalExpression(rest)
+				elif 'while' in line:
+					loopGuard = self.evalExpression(line[6:])
+					loopBraceLevels[braceLevel] = (line[6:], y)
+					if not loopGuard:
+						i = braceLevel
+>>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 						y += 1
-				else: #loop guard true
-					pass
-			self.readLine(line)
+						while braceLevel != i:
+							thisline = funcCode[y]
+							if '{' in thisLine:
+								braceLevel += 1
+							if '}' in thisLine:
+								braceLevel -= 1
+							y += 1
+					else: #loop guard true, only happens the first time thru
+						pass
+				self.readLine(line)
+				y += 1
 
 	def readLine(self, line):
 		if line[0] == '$' and line[-1] == ';': #its a declare
@@ -209,6 +274,19 @@ class Program():
 		elif line[0] == '$' and line[-1] == ')': #its a function!
 			#do some function magic here
 			None
+<<<<<<< HEAD
+=======
+		#elif 'while' in line:
+		#	if (loop guard false):
+		#
+		#	self.loop(line)
+		#elif '=' in line: #tentatively, this is a assign
+		#	if line[-1] != ';':
+		#			raise Exception('No semicolon.')
+		#	else:
+		#		line = line[:-1]
+		#	split = shlex.split(line)
+>>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 		elif '=' in line and line[-1] == ';': #tentatively, this is a assign
 			line = line[:-1]
 			split = line.split()
@@ -222,6 +300,10 @@ class Program():
 				curStr += exp
 			if split[0] not in self.varDicts[-1].keys() and split[0].strip('*') not in self.varDicts[-1].keys():
 				pass
+<<<<<<< HEAD
+=======
+				#raise Exception('Variable doesn\'t exist')
+>>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 			self.assign(split[0], curStr)
 		elif line == '{':
 			self.scope += 1
@@ -259,6 +341,11 @@ class Program():
 
 	def declare(self, name, expression, mtype):
 		#print('!!', name)
+<<<<<<< HEAD
+=======
+		name = name.strip('*')
+		print('declare', name, expression, mtype)
+>>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 		if 'malloc' in expression:
 			self.mallocParser(0, name, expression, mtype)
 			return
@@ -587,7 +674,11 @@ class Program():
 		#print('varDicts', self.varDicts[-1])
 		y = 0
 		while y < len(tokens):
+<<<<<<< HEAD
 			print(y, tokens[y], operatorStack, valueStack, self.varDicts[-1])
+=======
+			print(y, tokens[y], operatorStack, valueStack)
+>>>>>>> 1d3660d1323485b171372b30cfee9bf7448ee689
 			token = tokens[y]
 			#print(token)
 			if stringIsInt(token):
@@ -656,7 +747,8 @@ class Program():
 			v1 = valueStack.pop()
 			v2 = valueStack.pop()
 			valueStack.append(applyOperator(x, v1, v2))
-		#print("returning", valueStack[0])
+		print("------", self.varDicts[-1])
+		print("returning", valueStack)
 		return valueStack[0]
 
 p = Program('cfile.txt')
